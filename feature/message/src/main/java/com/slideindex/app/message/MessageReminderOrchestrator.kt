@@ -119,6 +119,8 @@ class MessageReminderOrchestrator @Inject constructor(
                     overlayPort.containsNotification(MessageStyle.EdgeCard, data)
                 if (!allowCNoticeUpdate && !allowEdgeCardUpdate) return@post
             }
+            // 所有样式共用一套内容指纹：内容没变就不下发，避免 TG 刷新通知时旧卡片重新弹出。
+            if (!NotificationContentGate.accept(data)) return@post
             if (isAlreadyDisplayed(plan) && !plan.showCNotice && !plan.showEdgeCard) return@post
             val showDanmaku = acceptedByDedup &&
                 (!plan.showDanmaku || MessageNotificationFilter.acceptDanmaku(data))

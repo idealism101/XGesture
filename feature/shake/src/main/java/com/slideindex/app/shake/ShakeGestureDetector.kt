@@ -54,7 +54,9 @@ class ShakeGestureDetector(
         val registered = sensorHub.register(
             kind = kind,
             owner = this,
-            delayUs = SensorManager.SENSOR_DELAY_GAME,
+            // 与悬浮菜单一致：SENSOR_DELAY_UI（约 66ms / 16Hz）。
+            // 原来用 SENSOR_DELAY_GAME（20ms / 50Hz），事件量和判定开销是现在的 3 倍。
+            delayUs = SensorManager.SENSOR_DELAY_UI,
         ) { event ->
             if (useAccelerometer) handleAccelerometer(event) else handleGyroscope(event)
         }

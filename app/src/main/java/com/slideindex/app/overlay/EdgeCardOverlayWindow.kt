@@ -8,6 +8,7 @@ import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
+import android.hardware.display.DisplayManager
 import android.os.Looper
 import android.text.TextUtils
 import android.util.Log
@@ -31,6 +32,7 @@ import com.slideindex.app.message.MessageAction
 import com.slideindex.app.message.MessageDisplayPlan
 import com.slideindex.app.message.MessagePlacementFractions
 import com.slideindex.app.message.MessageSettings
+import com.slideindex.app.message.NotificationContentGate
 import com.slideindex.app.message.NotificationData
 import com.slideindex.app.message.SideBubbleHorizontalEdge
 import kotlin.math.abs
@@ -86,6 +88,7 @@ object EdgeCardOverlayWindow {
 
     private var windowManager: WindowManager? = null
     private var appContext: Context? = null
+    private var displayListener: DisplayManager.DisplayListener? = null
 
     val isShowing: Boolean get() = entries.isNotEmpty()
 
@@ -125,12 +128,13 @@ object EdgeCardOverlayWindow {
         if (appContext == null || windowManager == null) {
             appContext = hostContext
             windowManager = hostContext.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+            registerDisplayListener(hostContext)
         }
         entries.filter { it.preview }.forEach { removeEntry(it, notifyDismiss = false) }
 
         val existing = entries.firstOrNull { it.matches(plan.data) && !it.preview }
         if (existing != null) {
-            val changed = contentSignature(existing.plan.data) != contentSignature(plan.data)
+            val changed = NotificationContentGate.signature(existing.plan.data) != NotificationContentGate.signature(plan.data)
             val unread = if (changed) {
                 maxOf(plan.data.badgeCount, existing.state.unreadCount + 1)
             } else {
@@ -181,6 +185,7 @@ object EdgeCardOverlayWindow {
         if (appContext == null || windowManager == null) {
             appContext = hostContext
             windowManager = hostContext.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+            registerDisplayListener(hostContext)
         }
         dismissAllInternal(notifyDismiss = false)
 
@@ -328,12 +333,49 @@ object EdgeCardOverlayWindow {
         val view = entry.view ?: return
         val params = entry.params ?: return
         bindView(entry)
-        // 窗口宽度交给 WRAP_CONTENT + View 的内容测量，这里不再改成固定档位，
-        // 否则会把窗口锁在旧宽度上，卡片右侧露出一条空隙。
-        val expanded = entry.state.isExpanded
-        val targetX = if (expanded) expandedX(entry) else collapsedX(entry)
-        val targetAlpha = if (expanded) 1f else entry.plan.settings.edgeCardOpacity.coerceIn(0f, 1f)
-        animateTo(entry, view, params, targetX, targetAlpha, animated)
+        // 内容刚换，View 的宽度要等下一帧布局才更新；同帧算 x 会用到旧宽度，
+        // 表现为卡片右端离屏幕边缘差一截（内容变短时）或被推出屏幕（变长时）。
+        view.post {
+            if (entry.view !== view) return@post
+            val expanded = entry.state.isExpanded
+            val targetX = if (expanded) expandedX(entry) else collapsedX(entry)
+            val targetAlpha = if (expanded) 1f else entry.plan.settings.edgeCardOpacity.coerceIn(0f, 1f)
+            animateTo(entry, view, params, targetX, targetAlpha, animated)
+        }
+    }
+
+    /** 旋转等屏幕变化后，x/y 都要按新的屏幕尺寸重算，否则卡片会停在旧坐标上。 */
+    private fun registerDisplayListener(context: Context) {
+        if (displayListener != null) return
+        val manager = context.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager ?: return
+        val listener = object : DisplayManager.DisplayListener {
+            override fun onDisplayAdded(displayId: Int) = Unit
+            override fun onDisplayRemoved(displayId: Int) = Unit
+            override fun onDisplayChanged(displayId: Int) {
+                if (Looper.myLooper() != Looper.getMainLooper()) {
+                    mainHandler.post { onDisplayChanged() }
+                    return
+                }
+                onDisplayChanged()
+            }
+
+            private fun onDisplayChanged() {
+                if (entries.isEmpty()) return
+                relayout()
+                entries.toList().forEach { entry -> applyEntry(entry, animated = false) }
+            }
+        }
+        manager.registerDisplayListener(listener, mainHandler)
+        displayListener = listener
+    }
+
+    private fun unregisterDisplayListener() {
+        val listener = displayListener ?: return
+        runCatching {
+            (appContext?.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager)
+                ?.unregisterDisplayListener(listener)
+        }
+        displayListener = null
     }
 
     private fun animateTo(
@@ -542,6 +584,7 @@ object EdgeCardOverlayWindow {
     }
 
     private fun dismissAllInternal(notifyDismiss: Boolean) {
+        unregisterDisplayListener()
         pendingShows.values.forEach { mainHandler.removeCallbacks(it) }
         pendingShows.clear()
         entries.toList().forEach { removeEntry(it, notifyDismiss) }
@@ -663,18 +706,6 @@ object EdgeCardOverlayWindow {
     private fun cancelAutoCollapse(entry: EdgeCardEntry) {
         entry.autoCollapse?.let { mainHandler.removeCallbacks(it) }
         entry.autoCollapse = null
-    }
-
-    private fun contentSignature(data: NotificationData): String {
-        val last = data.messages.lastOrNull()
-        return buildString {
-            append(data.key).append('|')
-            append(data.title).append('|')
-            append(data.content).append('|')
-            append(data.messages.size).append('|')
-            append(data.badgeCount).append('|')
-            if (last != null) append(last.sender).append(':').append(last.text)
-        }
     }
 
     // ---- 触摸 ----
@@ -853,9 +884,11 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
     private val textLayer = LinearLayout(context)
     private val cardLayer = FrameLayout(context)
 
+
     init {
         clipChildren = false
         clipToPadding = false
+
         iconView.scaleType = ImageView.ScaleType.CENTER_CROP
         iconView.clipToOutline = true
         iconView.outlineProvider = object : ViewOutlineProvider() {
@@ -923,6 +956,25 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
         addView(cardLayer, LayoutParams(-1, -1))
     }
 
+    /**
+     * 卡片皮肤：复用侧边气泡主题的左右背景 drawable（形状与贴边方向一致），
+     * 文字色也取自主题；主题没有侧边资源时退回白底 + 1px 描边。
+     */
+    /** 固定外观：半圆 + 矩形，白底 + 1 物理像素描边。 */
+    private fun applyCardBackground(right: Boolean) {
+        val corner = dp(21).toFloat()
+        cardLayer.background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(Color.WHITE)
+            setStroke(1, Color.parseColor("#A1A2A3"))
+            cornerRadii = if (right) {
+                floatArrayOf(corner, corner, 0f, 0f, 0f, 0f, corner, corner)
+            } else {
+                floatArrayOf(0f, 0f, corner, corner, corner, corner, 0f, 0f)
+            }
+        }
+    }
+
     fun bind(plan: MessageDisplayPlan, state: EdgeCardUiState) {
         val data = plan.data
         val settings = plan.settings
@@ -939,20 +991,7 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
         }
 
         val right = settings.edgeCardHorizontalEdge == SideBubbleHorizontalEdge.Right
-        val corner = dp(21).toFloat()
-        val bg = (cardLayer.background as? GradientDrawable) ?: GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            setColor(Color.WHITE)
-            cardLayer.background = this
-        }
-        bg.setColor(Color.WHITE)
-        // 1 物理像素描边（竞品默认侧边主题同款），白色卡片在浅色背景上才有边界。
-        bg.setStroke(1, Color.parseColor("#A1A2A3"))
-        bg.cornerRadii = if (right) {
-            floatArrayOf(corner, corner, 0f, 0f, 0f, 0f, corner, corner)
-        } else {
-            floatArrayOf(0f, 0f, corner, corner, corner, corner, 0f, 0f)
-        }
+        applyCardBackground(right)
 
         val avatarParams = avatarContainer.layoutParams as FrameLayout.LayoutParams
         avatarParams.gravity = (if (right) Gravity.START else Gravity.END) or Gravity.CENTER_VERTICAL
@@ -1038,4 +1077,6 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun dp(value: Float): Int = (value * resources.displayMetrics.density).roundToInt()
 }
