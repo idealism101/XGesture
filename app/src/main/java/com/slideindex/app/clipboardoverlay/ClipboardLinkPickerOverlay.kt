@@ -11,7 +11,6 @@ import android.view.WindowManager
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -19,11 +18,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,7 +37,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -50,19 +45,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalConfiguration
@@ -88,8 +79,6 @@ import com.slideindex.app.settings.AppSettings
 import com.slideindex.app.ui.theme.LocalAppDarkTheme
 import com.slideindex.app.ui.theme.OverlayAwareModuleTheme
 import com.slideindex.app.util.resolveActivityCompat
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 
 private const val PICKER_ANIM_MS = 280
 
@@ -437,42 +426,19 @@ private fun AutoScrollingUrlText(
     color: Color,
     style: TextStyle,
 ) {
-    val scrollState = rememberScrollState()
-    var userHolding by remember { mutableStateOf(false) }
-
-    LaunchedEffect(text, userHolding) {
-        if (userHolding) return@LaunchedEffect
-        delay(700)
-        while (isActive) {
-            val max = scrollState.maxValue
-            if (max <= 0) {
-                delay(400)
-                continue
-            }
-            if (scrollState.value < max) {
-                val duration = ((max - scrollState.value) * 16).coerceIn(1800, 12000)
-                scrollState.animateScrollTo(max, tween(duration, easing = LinearEasing))
-                delay(900)
-            } else {
-                scrollState.animateScrollTo(0, tween(500))
-                delay(800)
-            }
-        }
-    }
-
+    // 用 basicMarquee 代替 horizontalScroll + animateScrollTo：
+    // 后者会让 ScrollState 长期处于 isScrollInProgress，行内横向滚动因此在按下瞬间
+    // 零阈值抢走手势（行点击失效、外层 LazyColumn 竖滑被取消）。
+    // basicMarquee 是纯绘制动画，不消费触摸。
     Text(
         text = text,
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(scrollState)
-            .pointerInput(text) {
-                awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false)
-                    userHolding = true
-                    waitForUpOrCancellation()
-                    userHolding = false
-                }
-            },
+            .basicMarquee(
+                iterations = Int.MAX_VALUE,
+                repeatDelayMillis = 900,
+                initialDelayMillis = 700,
+            ),
         style = style,
         color = color,
         maxLines = 1,
