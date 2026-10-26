@@ -18,6 +18,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.Message
 import android.os.Build
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.slideindex.app.MainActivity
@@ -46,7 +47,7 @@ class ClipboardMonitorForegroundService : Service() {
     private var useStandard = false
     private var useLsposed = false
     private var listenerThread: Thread? = null
-    private var lastChangedTime = 0L
+    private var lastChangedAtMs = 0L
     private val changedMinIntervalMs = 200L
     private var listenerService: IClipboardListenerService? = null
     private var bindGeneration = 0
@@ -75,7 +76,10 @@ class ClipboardMonitorForegroundService : Service() {
                     return
                 }
                 if (controller.config.shouldIgnoreEvent()) return
-                mainHandler.sendEmptyMessage(MSG_CLIPBOARD_CHANGED)
+                mainHandler.obtainMessage(
+                    MSG_CLIPBOARD_CHANGED,
+                    ClipboardChangeEvent(SystemClock.elapsedRealtime()),
+                ).sendToTarget()
             }
         }
     }
@@ -404,9 +408,10 @@ class ClipboardMonitorForegroundService : Service() {
     private fun startPrimaryClipChangedListener(controller: ClipboardMonitorController) {
         val clipboard = getSystemService(CLIPBOARD_SERVICE) as? ClipboardManager ?: return
         val listener = ClipboardManager.OnPrimaryClipChangedListener {
+            val event = ClipboardChangeEvent(SystemClock.elapsedRealtime())
             mainHandler.post {
                 if (controller.config.shouldIgnoreEvent()) return@post
-                mainHandler.sendEmptyMessage(MSG_CLIPBOARD_CHANGED)
+                mainHandler.obtainMessage(MSG_CLIPBOARD_CHANGED, event).sendToTarget()
             }
         }
         standardClipListener = listener
@@ -420,10 +425,10 @@ class ClipboardMonitorForegroundService : Service() {
         standardClipListener = null
     }
 
-    private fun handleClipboardChanged() {
-        val now = System.currentTimeMillis()
-        if (now - lastChangedTime < changedMinIntervalMs) return
-        lastChangedTime = now
+    private fun handleClipboardChanged(event: ClipboardChangeEvent?) {
+        val eventAtMs = event?.elapsedMs ?: SystemClock.elapsedRealtime()
+        if (eventAtMs - lastChangedAtMs < changedMinIntervalMs) return
+        lastChangedAtMs = eventAtMs
         if (useStandard || useLsposed) {
             ClipboardReader.read(applicationContext)?.let { payload ->
                 ClipboardMonitorController.peek()?.dispatchPayload(payload)
@@ -599,7 +604,7 @@ class ClipboardMonitorForegroundService : Service() {
         private val outer = WeakReference(service)
 
         override fun handleMessage(msg: Message) {
-            outer.get()?.handleClipboardChanged()
+            outer.get()?.handleClipboardChanged(msg.obj as? ClipboardChangeEvent)
         }
     }
 
@@ -644,3 +649,14 @@ class ClipboardMonitorForegroundService : Service() {
         }
     }
 }
+
+/**
+ * 剪贴板变更事件。
+ *
+ * [elapsedMs] 是**回调到达时刻**（SystemClock.elapsedRealtime），不是主线程处理时刻：
+ * 主线程正在挂浮窗时消息会排队，按处理时刻算会把间隔 188ms 的重复事件拖到 212ms，
+ * 刚好越过 200ms 节流窗口。
+ */
+private data class ClipboardChangeEvent(
+    val elapsedMs: Long,
+)

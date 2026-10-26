@@ -204,6 +204,14 @@ class ClipboardOverlayView @JvmOverloads constructor(
             clipboardPreview.visibility = View.VISIBLE
             previewBorder.visibility = View.VISIBLE
             actionContainer.visibility = View.VISIBLE
+            // setMinimized(true) 会把 action 容器底色也藏掉；展开时若行内已有 chip，
+            // 要把底色一起恢复（复用已渲染内容时不会再经过 showShareChip/setActionChip）。
+            if (actionChips.isNotEmpty() ||
+                shareChip.visibility == View.VISIBLE ||
+                remoteCopyChip.visibility == View.VISIBLE
+            ) {
+                actionContainerBackground.visibility = View.VISIBLE
+            }
         }
     }
 

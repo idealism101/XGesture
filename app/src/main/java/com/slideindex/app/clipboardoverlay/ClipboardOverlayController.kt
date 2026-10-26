@@ -41,6 +41,8 @@ internal class ClipboardOverlayController(
     private var onPreviewTapped: (() -> Unit)? = null
     private var closeDialogsReceiver: BroadcastReceiver? = null
     private var removed = false
+    private var renderedModel: ClipboardModel? = null
+    private var renderToken = 0
 
     init {
         view.setCallbacks(this)
@@ -65,8 +67,11 @@ internal class ClipboardOverlayController(
         clipboardPayload = payload
         val wasExiting = exitAnimator?.isRunning == true
         if (wasExiting) exitAnimator?.cancel()
-        val shouldAnimate = !model.dataMatches(clipboardModel) || wasExiting
+        val matches = model.dataMatches(clipboardModel)
+        val shouldAnimate = !matches || wasExiting
         clipboardModel = model
+        // 内容没变（且不在退场动画中）时不重绘：只续命。
+        // 重绘会再跑一次 classify 并往 action 行追加一颗 chip，重复上报时就会叠出两个按钮。
         if (shouldAnimate) {
             reset()
             if (shouldShowMinimized(currentInsets())) {
@@ -77,8 +82,6 @@ internal class ClipboardOverlayController(
                 setExpandedView { animateIn() }
             }
             view.announceForAccessibility(getAccessibilityAnnouncement(model.type))
-        } else if (!isMinimized) {
-            setExpandedView {}
         }
         resetTimeout()
     }
@@ -95,10 +98,12 @@ internal class ClipboardOverlayController(
 
     private fun setExpandedView(onViewReady: () -> Unit) {
         val model = clipboardModel ?: return
+        renderedModel = model
+        val token = ++renderToken
         view.setMinimized(false)
         when (model.type) {
             ClipboardModel.Type.TEXT -> {
-                classifyText(model)
+                classifyText(model, token)
                 if (model.isSensitive) {
                     view.showTextPreview(context.getString(R.string.clipboard_overlay_asterisks), hidden = true)
                 } else {
@@ -151,7 +156,13 @@ internal class ClipboardOverlayController(
         enterAnimator?.addListener(object : AnimatorListenerAdapter() {
             override fun onAnimationEnd(animation: Animator) {
                 if (isMinimized) isMinimized = false
-                setExpandedView { animateIn() }
+                // 内容没变且已经渲染过：复用现有预览与 chip，不要再 classify 一次（会多出一颗按钮）。
+                if (renderedModel?.dataMatches(clipboardModel) == true) {
+                    view.setMinimized(false)
+                    animateIn()
+                } else {
+                    setExpandedView { animateIn() }
+                }
             }
         })
         enterAnimator?.start()
@@ -163,15 +174,20 @@ internal class ClipboardOverlayController(
         else -> context.getString(R.string.clipboard_overlay_content_copied)
     }
 
-    private fun classifyText(model: ClipboardModel) {
+    private fun classifyText(model: ClipboardModel, token: Int) {
         if (model.isSensitive) return
         val text = model.text?.toString().orEmpty()
         if (text.isBlank()) return
         bgExecutor.execute {
             val spec = runCatching { ClipboardOverlaySmartActions.resolve(context, text) }.getOrNull()
                 ?: return@execute
-            if (model == clipboardModel) {
-                view.post { bindSmartAction(spec) }
+            if (model.dataMatches(clipboardModel)) {
+                view.post {
+                    // post 出去之后内容/渲染代次可能已经变了，必须再校验，避免旧 chip 落到新内容上。
+                    if (token == renderToken && model.dataMatches(clipboardModel)) {
+                        bindSmartAction(spec)
+                    }
+                }
             }
         }
     }
@@ -277,6 +293,8 @@ internal class ClipboardOverlayController(
     }
 
     private fun reset() {
+        renderedModel = null
+        renderToken++
         onRemoteCopyTapped = null
         onShareTapped = null
         onPreviewTapped = null
