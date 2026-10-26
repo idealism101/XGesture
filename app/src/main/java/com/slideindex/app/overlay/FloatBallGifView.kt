@@ -88,10 +88,17 @@ internal class FloatBallGifView @JvmOverloads constructor(
         }
     }
 
-    fun setAnimating(animating: Boolean) {
-        val layer = if (animating) LAYER_TYPE_HARDWARE else LAYER_TYPE_NONE
-        if (layerType != layer) {
-            setLayerType(layer, null)
+    /**
+     * 播放状态切换。
+     *
+     * 这里**不再**给 GIF 设 `LAYER_TYPE_HARDWARE`：硬件层只对「静态内容做位移/透明度动画」
+     * 有利，GIF 每帧内容都在变，硬件层会多出一趟离屏渲染再合成。真机实测
+     * （`dumpsys gfxinfo framestats`，309 帧）：单帧 7.06ms 里 GPU 命令 2.21ms、
+     * 入队 2.54ms，而布局+录制只有 0.62ms —— 瓶颈在离屏合成，不在绘制本身。
+     */
+    fun setAnimating(@Suppress("UNUSED_PARAMETER") animating: Boolean) {
+        if (layerType != LAYER_TYPE_NONE) {
+            setLayerType(LAYER_TYPE_NONE, null)
         }
     }
 

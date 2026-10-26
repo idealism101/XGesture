@@ -117,6 +117,15 @@ object FloatBallOverlay {
     private var touchLayoutParams: WindowManager.LayoutParams? = null
     private var lineTouchHost: FloatBallStripHost? = null
     private var lineTouchLayoutParams: WindowManager.LayoutParams? = null
+
+    /**
+     * 触摸窗被撑成全屏前的参数快照（key = 该窗的 LayoutParams）。
+     *
+     * 手势期间为了接住"手指移出球体范围"的 MOVE/UP，触摸窗会被临时撑成整屏；
+     * 收尾时必须缩回原尺寸，否则会留下一个常驻的 1080×2340 透明窗——
+     * 它不可见，但每次重绘都是整屏重绘（真机实测能跑到 120fps）。
+     */
+    private val fullscreenTouchBackup = HashMap<Any, IntArray>()
     private var ballIdleChromeOwner: OverlayComposeOwner? = null
     private var lineIdleChromeOwner: OverlayComposeOwner? = null
     private var ballIdleChromeView: ComposeView? = null
@@ -1179,12 +1188,15 @@ object FloatBallOverlay {
         val lineTouchLp = lineTouchLayoutParams
         if (display != null && displayLp != null && !display.isAttachedToWindow) {
             runCatching { wm.addView(display, displayLp) }
+            com.slideindex.app.perf.OverlayDrawProbe.attach(display, "ball-display")
         }
         if (touch != null && touchLp != null && !touch.isAttachedToWindow) {
             runCatching { wm.addView(touch, touchLp) }
+            com.slideindex.app.perf.OverlayDrawProbe.attach(touch, "ball-touch")
         }
         if (lineTouch != null && lineTouchLp != null && !lineTouch.isAttachedToWindow) {
             runCatching { wm.addView(lineTouch, lineTouchLp) }
+            com.slideindex.app.perf.OverlayDrawProbe.attach(lineTouch, "ball-line-touch")
         }
         chromeDetachedForCapture = false
     }
@@ -1463,6 +1475,9 @@ object FloatBallOverlay {
         val displayAdded = runCatching { wm.addView(displayHost, displayLp) }
             .onFailure { Log.e(TAG, "failed to add display overlay", it) }
             .isSuccess
+        if (displayAdded) {
+            com.slideindex.app.perf.OverlayDrawProbe.attach(displayHost, "ball-display")
+        }
         if (!displayAdded) {
             displayDialogOwner.destroy()
             return
@@ -1471,6 +1486,9 @@ object FloatBallOverlay {
         val touchAdded = runCatching { wm.addView(touchLayout, touchLp) }
             .onFailure { Log.e(TAG, "failed to add ball touch overlay", it) }
             .isSuccess
+        if (touchAdded) {
+            com.slideindex.app.perf.OverlayDrawProbe.attach(touchLayout, "ball-touch")
+        }
         if (!touchAdded) {
             runCatching { wm.removeView(displayHost) }
             displayDialogOwner.destroy()
@@ -1480,6 +1498,9 @@ object FloatBallOverlay {
         val lineTouchAdded = runCatching { wm.addView(lineTouchLayout, lineTouchLp) }
             .onFailure { Log.e(TAG, "failed to add line touch overlay", it) }
             .isSuccess
+        if (lineTouchAdded) {
+            com.slideindex.app.perf.OverlayDrawProbe.attach(lineTouchLayout, "ball-line-touch")
+        }
         if (!lineTouchAdded) {
             runCatching { wm.removeView(touchLayout) }
             runCatching { wm.removeView(displayHost) }
@@ -1689,6 +1710,13 @@ object FloatBallOverlay {
         ) {
             return
         }
+        fullscreenTouchBackup[params] = intArrayOf(
+            params.width,
+            params.height,
+            params.x,
+            params.y,
+            params.flags,
+        )
         params.x = 0
         params.y = 0
         params.width = WindowManager.LayoutParams.MATCH_PARENT
@@ -1708,10 +1736,11 @@ object FloatBallOverlay {
             return
         }
         settingsState?.value?.let { syncLineTouchWindowLayout(it) }
-            ?: run {
-                params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                runCatching { wm.updateViewLayout(view, params) }
-            }
+        if (isTouchHostFullscreen(params)) {
+            restoreTouchHostFromFullscreen(view, params, wm)
+        } else {
+            fullscreenTouchBackup.remove(params)
+        }
     }
 
     private fun collapseBallTouchHostFromFullscreen() {
@@ -1724,10 +1753,43 @@ object FloatBallOverlay {
             return
         }
         settingsState?.value?.let { syncBallTouchWindowLayout(it) }
-            ?: run {
-                params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                runCatching { wm.updateViewLayout(view, params) }
-            }
+        if (isTouchHostFullscreen(params)) {
+            restoreTouchHostFromFullscreen(view, params, wm)
+        } else {
+            fullscreenTouchBackup.remove(params)
+        }
+    }
+
+    private fun isTouchHostFullscreen(params: WindowManager.LayoutParams): Boolean =
+        params.width == WindowManager.LayoutParams.MATCH_PARENT &&
+            params.height == WindowManager.LayoutParams.MATCH_PARENT
+
+    /**
+     * 全屏捕获收尾的兜底还原。
+     *
+     * `sync*WindowLayout` 在 sceneState 为空或被拖动态挡住时会直接 return，
+     * 光靠它收不回来；这里按撑大前的快照还原尺寸与 flags。没有快照（旧会话遗留的
+     * 全屏窗）就缩到 1×1 并置为不可触摸，避免整屏窗常驻、每帧整屏重绘。
+     */
+    private fun restoreTouchHostFromFullscreen(
+        view: View,
+        params: WindowManager.LayoutParams,
+        wm: WindowManager,
+    ) {
+        val backup = fullscreenTouchBackup.remove(params)
+        if (backup != null) {
+            params.width = backup[0]
+            params.height = backup[1]
+            params.x = backup[2]
+            params.y = backup[3]
+            params.flags = backup[4]
+        } else {
+            params.width = 1
+            params.height = 1
+            params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        }
+        runCatching { wm.updateViewLayout(view, params) }
+            .onFailure { Log.w(TAG, "restoreTouchHostFromFullscreen failed", it) }
     }
 
     private fun setBallTouchHostPassthrough(passthrough: Boolean) {
@@ -2493,6 +2555,7 @@ object FloatBallOverlay {
                 view.requestLayout()
                 view.invalidate()
             }.onFailure { Log.w(TAG, "bringOverlayToFront re-add failed", it) }
+            com.slideindex.app.perf.OverlayDrawProbe.attach(view, "ball-front")
             return
         }
         if (forceReAdd) {
@@ -2502,6 +2565,7 @@ object FloatBallOverlay {
                 view.requestLayout()
                 view.invalidate()
             }.onFailure { Log.w(TAG, "bringOverlayToFront forceReAdd failed", it) }
+            com.slideindex.app.perf.OverlayDrawProbe.attach(view, "ball-front")
             return
         }
         runCatching {

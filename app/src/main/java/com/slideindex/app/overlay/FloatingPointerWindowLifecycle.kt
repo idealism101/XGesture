@@ -195,6 +195,7 @@ internal class FloatingPointerWindowLifecycle(
             displayDialogOwner.destroy()
             return
         }
+        com.slideindex.app.perf.OverlayDrawProbe.attach(displayCompose, "pointer-display")
 
         val touchAdded = runCatching { wm.addView(touchLayout, touchParams) }
             .onFailure { Log.e(TAG, "touch addView failed", it) }
@@ -204,6 +205,7 @@ internal class FloatingPointerWindowLifecycle(
             displayDialogOwner.destroy()
             return
         }
+        com.slideindex.app.perf.OverlayDrawProbe.attach(touchLayout, "pointer-touch")
 
         window.windowManager = wm
         window.displayView = displayCompose

@@ -51,6 +51,10 @@ internal class SideOverlayWindowManager(
     private fun addOverlayView(view: View, params: WindowManager.LayoutParams) {
         OverlayWindowTypes.ensureNoBrightnessOverride(params)
         windowManager.addView(view, params)
+        com.slideindex.app.perf.OverlayDrawProbe.attach(
+            view,
+            "edge-${view.javaClass.simpleName}@${System.identityHashCode(view) % 1000}",
+        )
         trackOverlayView(view)
     }
 

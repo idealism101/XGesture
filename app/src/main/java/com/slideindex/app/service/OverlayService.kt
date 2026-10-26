@@ -49,6 +49,8 @@ class OverlayService : LifecycleService() {
             )
         }
         startAccessibilityWatchdog()
+        // debug 专用：装一个广播入口，可按需采一段主线程栈（release 下是空操作）。
+        com.slideindex.app.perf.MainThreadSampler.install(this)
     }
 
     private fun startAccessibilityWatchdog() {
