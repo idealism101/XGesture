@@ -233,6 +233,14 @@
     <string name="message_style_float_icon">フロートアイコン</string>
     <string name="message_style_side_bubble">サイドバブル</string>
     <string name="message_style_edge_card">エッジカード</string>
+    <string name="message_style_edge_card_desc">画面端に貼り付く1枚のカード。通常は半透明でアバターのみ表示し、新着で展開。右スワイプで折りたたみ、左スワイプで展開、上下スワイプで消去</string>
+    <string name="message_style_edge_card_opacity">折りたたみ時の不透明度</string>
+    <string name="message_style_edge_card_auto_collapse">自動で折りたたむ</string>
+    <string name="message_style_edge_card_max_count">同時表示枚数</string>
+    <string name="message_style_edge_card_auto_collapse_off">折りたたまない</string>
+    <string name="message_style_edge_card_position">カードの位置</string>
+    <string name="message_style_edge_card_position_hint">左右の端を選び、スライダーで縦位置を調整</string>
+    <string name="message_style_section_edge_card_settings">エッジカード設定</string>
     <string name="message_style_danmaku">弾幕</string>
     <string name="message_style_float_icon_size">サイズ</string>
     <string name="message_style_float_icon_opacity">フロートアイコンの不透明度</string>

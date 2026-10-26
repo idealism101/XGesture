@@ -233,6 +233,14 @@
     <string name="message_style_float_icon">الكرة العائمة</string>
     <string name="message_style_side_bubble">فقاعة جانبية</string>
     <string name="message_style_edge_card">بطاقة الحافة</string>
+    <string name="message_style_edge_card_desc">بطاقة واحدة ملتصقة بحافة الشاشة: شبه شفافة تُظهر الصورة الرمزية فقط، وتتوسع عند وصول رسالة جديدة؛ اسحب لليمين للطي، ولليسار للتوسيع، وللأعلى أو الأسفل للإخفاء</string>
+    <string name="message_style_edge_card_opacity">شفافية الحالة المطوية</string>
+    <string name="message_style_edge_card_auto_collapse">الطي التلقائي</string>
+    <string name="message_style_edge_card_max_count">عدد البطاقات المعروضة</string>
+    <string name="message_style_edge_card_auto_collapse_off">عدم الطي التلقائي</string>
+    <string name="message_style_edge_card_position">موضع البطاقة</string>
+    <string name="message_style_edge_card_position_hint">اختر اللصق باليسار أو اليمين، واضبط الموضع العمودي</string>
+    <string name="message_style_section_edge_card_settings">إعدادات بطاقة الحافة</string>
     <string name="message_style_danmaku">رسائل التعليقات المتحركة</string>
     <string name="message_style_float_icon_size">الحجم</string>
     <string name="message_style_float_icon_opacity">شفافية الكرة العائمة</string>
