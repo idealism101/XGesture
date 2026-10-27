@@ -541,12 +541,12 @@ private fun FloatBallGifVisual(
             factory = { ctx ->
                 FloatBallGifView(ctx).apply {
                     setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                    this.alpha = alpha
+                    setFrameAlpha(alpha)
                     player.attach(this)
                 }
             },
             update = { gifView ->
-                gifView.alpha = alpha
+                gifView.setFrameAlpha(alpha)
             }
         )
     }

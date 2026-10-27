@@ -2,10 +2,7 @@ package com.slideindex.app.overlay
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.ImageDecoder
 import android.graphics.Outline
-import android.graphics.drawable.AnimatedImageDrawable
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -61,8 +58,6 @@ internal class FloatBallIconView(context: Context) : FrameLayout(context) {
     private var slideshowIndex = 0
     private var gifDecodeToken = 0
     private var gifSequenceHandle: FloatBallGifSequenceCache.Handle? = null
-    /** 平台 [AnimatedImageDrawable] 播放中的 GIF；非空时由它在渲染线程推进动画。 */
-    private var gifDrawable: AnimatedImageDrawable? = null
 
     private val slideshowRunnable = object : Runnable {
         override fun run() {
@@ -163,7 +158,6 @@ internal class FloatBallIconView(context: Context) : FrameLayout(context) {
 
     fun release() {
         stopSlideshow()
-        stopGifDrawable()
         gifDecodeToken++
         gifPlayer.release()
         releaseGifSequence()
@@ -221,7 +215,6 @@ internal class FloatBallIconView(context: Context) : FrameLayout(context) {
 
     private fun showBuiltin(styleType: FloatBallStyleType, opacity: Float) {
         stopSlideshow()
-        stopGifDrawable()
         gifPlayer.release()
         releaseGifSequence()
         releaseOwnedBitmap()
@@ -233,11 +226,10 @@ internal class FloatBallIconView(context: Context) : FrameLayout(context) {
 
     private fun showGif(settings: AppSettings, opacity: Float, decodePx: Int) {
         stopSlideshow()
-        stopGifDrawable()
         releaseOwnedBitmap()
         builtinAnimView.releaseAnimation()
         showContentMode(ContentMode.GIF)
-        gifView.alpha = opacity
+        gifView.setFrameAlpha(opacity)
 
         val uri = settings.floatBallGifUri
         if (uri.isBlank() || !FloatBallStyleAssetStore.canRead(context, uri)) {
@@ -245,10 +237,8 @@ internal class FloatBallIconView(context: Context) : FrameLayout(context) {
             return
         }
 
-        // 实验路径：交给平台 AnimatedImageDrawable —— 动画帧由渲染线程推进，
-        // 不再由 Handler 每 33ms 唤醒主线程 invalidate。失败则退回自绘播放器。
-        if (showGifDrawable(uri, opacity)) return
-
+        // 软件 surface 播放：帧解码后由 FloatBallGifView 在自己的渲染线程 lockCanvas 画上去，
+        // 不再经过 HWUI 的 Vulkan 提交与逐帧纹理上传（对齐 FV 的做法）。
         val token = ++gifDecodeToken
         Thread {
             // 共享缓存：同一 (uri, 尺寸) 只解码一份，不再每次进 GIF 样式都解一整只。
@@ -269,43 +259,6 @@ internal class FloatBallIconView(context: Context) : FrameLayout(context) {
                 }
             }
         }.start()
-    }
-
-    /**
-     * 用平台 [AnimatedImageDrawable] 播放 GIF（实验路径）。
-     *
-     * 与自绘播放器的区别：帧推进在渲染线程完成，主线程不再每 33ms 被 Handler 唤醒，
-     * 也不经过 [FloatBallGifView] 的逐帧 `invalidate`。失败时返回 false，退回原路径。
-     */
-    private fun showGifDrawable(uri: String, opacity: Float): Boolean {
-        val drawable = runCatching {
-            val bytes = context.contentResolver.openInputStream(Uri.parse(uri))
-                ?.use { it.readBytes() }
-                ?: return false
-            ImageDecoder.decodeDrawable(ImageDecoder.createSource(java.nio.ByteBuffer.wrap(bytes)))
-        }.onFailure { android.util.Log.w("FloatBallIconView", "gif decode failed", it) }
-            .getOrNull() as? AnimatedImageDrawable ?: return false
-        val started = runCatching {
-            drawable.repeatCount = AnimatedImageDrawable.REPEAT_INFINITE
-            drawable.start()
-        }.isSuccess
-        if (!started) return false
-        gifDrawable?.stop()
-        gifDrawable = drawable
-        staticImage.setImageDrawable(drawable)
-        staticImage.alpha = opacity
-        showContentMode(ContentMode.STATIC)
-        android.util.Log.i("FloatBallIconView", "gif path=AnimatedImageDrawable")
-        return true
-    }
-
-    /** 停掉平台 GIF 播放器；离开 GIF 样式或视图释放时调用。 */
-    private fun stopGifDrawable() {
-        gifDrawable?.stop()
-        gifDrawable = null
-        if (staticImage.drawable is AnimatedImageDrawable) {
-            staticImage.setImageDrawable(null)
-        }
     }
 
     private fun showStaticUri(uri: String, opacity: Float) {
@@ -340,7 +293,6 @@ internal class FloatBallIconView(context: Context) : FrameLayout(context) {
     }
 
     private fun showStaticBitmap(bitmap: Bitmap, owns: Boolean) {
-        stopGifDrawable()
         gifPlayer.release()
         releaseGifSequence()
         builtinAnimView.releaseAnimation()
