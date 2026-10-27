@@ -93,7 +93,19 @@ class BackTapDetector(
     private var pulseStartNs = 0L
     private var lastPulseEndNs = 0L
     private var lastTapNs = 0L
+    private var lastTapPeakEnergy = 0f
+    private var lastTapDurationNs = 0L
     private var pulsePeakEnergy = 0f
+
+    // 安静段跟踪：真双击两下之间信号会真正回落；放桌上的回弹、骑行颠簸不会
+    /** 安静段积分（漏桶）：安静时累加、抖动时扣分，达到一定值才算"真的停过"。 */
+    private var quietRunNs = 0L
+    /** 本次脉冲开始前已经安静了多久，用于否决"一次冲击带出的连续回弹"。 */
+    private var pulseQuietNs = 0L
+    /** 上一帧的时间戳，用于给"安静"漏桶积分。 */
+    private var lastSampleNs = 0L
+    /** 硬冲击（放置/磕碰）后的抑制截止时间。 */
+    private var suppressUntilNs = 0L
 
     // 抗晃动 / 大波形
     private var lastQuietNs = 0L
@@ -332,8 +344,14 @@ class BackTapDetector(
         pulseStartNs = 0L
         lastPulseEndNs = 0L
         lastTapNs = 0L
+        lastTapPeakEnergy = 0f
+        lastTapDurationNs = 0L
         pulsePeakEnergy = 0f
         lastQuietNs = 0L
+        lastSampleNs = 0L
+        pulseQuietNs = 0L
+        quietRunNs = 0L
+        suppressUntilNs = 0L
         sustainedMotion = false
         isProximityNear = false
         lastLightLux = 0f
@@ -391,6 +409,18 @@ class BackTapDetector(
         val threshold = baseThreshold + ADAPTIVE_FACTOR * noiseFloor
         noiseEstimator.update(energy, state == State.IDLE && energy < threshold)
 
+        // 2.5 安静段跟踪：两击之间信号必须真正回落到阈值以下，
+        // 否则就是同一次冲击带出的回弹（放手机到桌面）或连续振动（骑行）。
+        // 用漏桶积分而不是"连续安静"：真实双击之间常有几帧小毛刺，
+        // 要求连续 40ms 会被毛刺打断成永远为 0；漏桶允许短暂抖动。
+        val dtNs = if (lastSampleNs != 0L) (t - lastSampleNs).coerceIn(0L, 50_000_000L) else 0L
+        lastSampleNs = t
+        quietRunNs = if (energy < threshold * QUIET_RATIO) {
+            (quietRunNs + dtNs).coerceAtMost(QUIET_MAX_NS)
+        } else {
+            (quietRunNs - dtNs * 2).coerceAtLeast(0L)
+        }
+
         // 3. 持续晃动 / 连续波形检测
         updateSustainedMotion(energy, t)
 
@@ -411,6 +441,15 @@ class BackTapDetector(
             state = State.IDLE
         }
 
+        // 6.5 硬冲击抑制期：放手机/磕碰后的回弹不参与配对
+        if (t < suppressUntilNs) {
+            if (state == State.IN_PULSE) {
+                lastPulseEndNs = t
+                state = State.LOCKOUT
+            }
+            return
+        }
+
         // 7. 大波形 / 饱和过滤：连续振动期间直接忽略脉冲
         if (sustainedMotion || energy > SATURATION_THRESHOLD) {
             if (state == State.IN_PULSE) {
@@ -424,6 +463,7 @@ class BackTapDetector(
         when (state) {
             State.IDLE -> {
                 if (energy > threshold) {
+                    pulseQuietNs = quietRunNs
                     state = State.IN_PULSE
                     pulseStartNs = t
                     pulsePeakEnergy = energy
@@ -439,7 +479,15 @@ class BackTapDetector(
                     if (released && duration in minPulseNs..maxPulseNs
                         && pulsePeakEnergy >= threshold * PEAK_RATIO
                     ) {
-                        registerTap(t)
+                        if (pulsePeakEnergy > HARD_IMPACT_ENERGY) {
+                            // 放手机到桌面/磕碰：冲击远超手指敲击（实测 25–29 vs 9–15），
+                            // 直接清掉配对并抑制一段时间，避免随后的回弹被配成双击
+                            suppressUntilNs = t + HARD_IMPACT_SUPPRESS_NS
+                            lastTapNs = 0L
+                            quietRunNs = 0L
+                        } else {
+                            registerTap(t, pulseQuietNs, pulsePeakEnergy, duration)
+                        }
                     }
                 }
             }
@@ -468,6 +516,10 @@ class BackTapDetector(
         lpMag.init(0f, t)
         noiseEstimator.init(0f)
         lastQuietNs = t
+        lastSampleNs = 0L
+        pulseQuietNs = 0L
+        quietRunNs = 0L
+        suppressUntilNs = 0L
     }
 
     private fun updateSustainedMotion(energy: Float, t: Long) {
@@ -479,15 +531,34 @@ class BackTapDetector(
         }
     }
 
-    private fun registerTap(t: Long) {
+    private fun registerTap(t: Long, quietBeforeNs: Long, peakEnergy: Float, durationNs: Long) {
         val gap = t - lastTapNs
         when {
             lastTapNs != 0L && gap in minGapNs..maxGapNs -> {
+                // 第二击之前必须有一段真正的安静，否则视为同一次冲击的连续回弹
+                // （手机放到桌面、骑行颠簸都会产生这种"连着响"的波形）
+                if (quietBeforeNs < QUIET_GAP_NS) {
+                    return
+                }
+                // 两击形状要相近：真双击两下力度/时长接近；
+                // 轻放桌面的第二次接触通常更长、更软
+                val peakRatio = if (lastTapPeakEnergy > 0f) peakEnergy / lastTapPeakEnergy else 0f
+                val durRatio = if (lastTapDurationNs > 0L) durationNs.toFloat() / lastTapDurationNs else 0f
+                if (peakRatio !in TAP_PEAK_RATIO_MIN..TAP_PEAK_RATIO_MAX) return
+                if (durRatio !in TAP_DUR_RATIO_MIN..TAP_DUR_RATIO_MAX) return
                 handler.post { onDoubleTap() }
                 lastTapNs = 0L
+                lastTapPeakEnergy = 0f
+                lastTapDurationNs = 0L
+                quietRunNs = 0L
             }
             gap >= minGapNs || lastTapNs == 0L -> {
                 lastTapNs = t
+                lastTapPeakEnergy = peakEnergy
+                lastTapDurationNs = durationNs
+                // 第一击之后重新攒"安静"：否则放下手机前那段静止会把积分顶满，
+                // 紧跟其后的回弹就能白白通过安静检查
+                quietRunNs = 0L
             }
             // gap < minGapNs：视为同一次物理敲击的残余，忽略
         }
@@ -601,12 +672,29 @@ class BackTapDetector(
         private const val SENSITIVITY_EXP_FACTOR = 0.18
 
         // 阈值自适应
-        private const val ADAPTIVE_FACTOR = 3f
+        private const val ADAPTIVE_FACTOR = 2f
         private const val NOISE_EMA_ALPHA = 0.02f
 
         // 脉冲检测
         private const val RELEASE_RATIO = 0.55f
-        private const val PEAK_RATIO = 1.3f
+        private const val PEAK_RATIO = 1.15f
+
+        // 双击两下的形状相似度：真双击力度/时长接近；轻放桌面的第二次接触更长更软
+        private const val TAP_PEAK_RATIO_MIN = 0.6f
+        private const val TAP_PEAK_RATIO_MAX = 1.5f
+        private const val TAP_DUR_RATIO_MIN = 0.6f
+        private const val TAP_DUR_RATIO_MAX = 1.6f
+
+        // 两击之间必须出现"真安静"：能量降到阈值 40% 以下并持续 40ms。
+        // 放手机到桌面的回弹、骑行支架的连续颠簸都不会出现这样的安静段。
+        private const val QUIET_RATIO = 0.4f
+        private const val QUIET_GAP_NS = 40_000_000L
+        /** 安静积分上限（超过就不再累加，避免长时间静止后"余量"过大）。 */
+        private const val QUIET_MAX_NS = 200_000_000L
+        /** 手指敲击峰值约 9–15 m/s²；放手机/磕碰约 25–29，取 20 区分。 */
+        private const val HARD_IMPACT_ENERGY = 20f
+        /** 硬冲击后的配对抑制时长。 */
+        private const val HARD_IMPACT_SUPPRESS_NS = 2_000_000_000L
         private const val MIN_PULSE_NS = 8_000_000L
         private const val MAX_PULSE_NS = 120_000_000L
         private const val LOCKOUT_NS = 100_000_000L
@@ -630,3 +718,5 @@ class BackTapDetector(
         private const val DEFAULT_MAX_GAP_NS = 550_000_000L
     }
 }
+
+
