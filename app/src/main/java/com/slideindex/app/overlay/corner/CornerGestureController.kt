@@ -2,6 +2,7 @@ package com.slideindex.app.overlay.corner
 
 import android.content.Context
 import android.content.res.Configuration
+import android.graphics.Rect
 import android.graphics.RectF
 import android.util.Log
 import android.view.Gravity
@@ -10,7 +11,6 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import com.slideindex.app.data.AppRepository
-import com.slideindex.app.overlay.EdgeSystemGestureExclusionView
 import com.slideindex.app.overlay.ModuleForwardedTouchGate
 import com.slideindex.app.overlay.OverlayBlurGate
 import com.slideindex.app.overlay.OverlayPassthrough
@@ -48,15 +48,7 @@ internal class CornerGestureController(
         val params: WindowManager.LayoutParams,
     )
 
-    private data class ExclusionSlot(
-        val anchor: CornerAnchor,
-        val strip: CornerZoneStrip,
-        val view: EdgeSystemGestureExclusionView,
-        val params: WindowManager.LayoutParams,
-    )
-
     private val captureSlots = mutableListOf<CaptureSlot>()
-    private val exclusionSlots = mutableListOf<ExclusionSlot>()
     private var overlayRoot: FrameLayout? = null
     private var overlayView: CornerGestureOverlayView? = null
     private var overlayParams: WindowManager.LayoutParams? = null
@@ -235,7 +227,6 @@ internal class CornerGestureController(
         overlayView = null
         overlayRoot = null
         captureSlots.clear()
-        exclusionSlots.clear()
         previewView = null
         previewRoot = null
     }
@@ -243,7 +234,6 @@ internal class CornerGestureController(
     private fun detachGestureLayers() {
         detachOverlay()
         detachCaptures()
-        detachExclusions()
     }
 
     private fun ensurePreviewView() {
@@ -531,72 +521,34 @@ internal class CornerGestureController(
         captureSlots.forEach { slot ->
             runCatching { windowManager.removeView(slot.host) }
         }
-        detachExclusions()
         capturesAttached = false
     }
 
-    private fun ensureExclusionSlots() {
-        CornerAnchor.entries.forEach { anchor ->
-            CornerZoneStrip.entries.forEach { strip ->
-                if (exclusionSlots.none { it.anchor == anchor && it.strip == strip }) {
-                    exclusionSlots += ExclusionSlot(
-                        anchor = anchor,
-                        strip = strip,
-                        view = EdgeSystemGestureExclusionView(context),
-                        params = OverlayWindowTypes.createCaptureParams(context).apply {
-                            OverlayWindowTypes.applyExclusionPassthroughFlags(this)
-                        },
-                    )
-                }
-            }
-        }
-    }
-
     private fun syncExclusionWindows(corner: CornerGestureSettings) {
-        if (!corner.overrideSystemNav) {
-            detachExclusions()
-            return
-        }
-        ensureExclusionSlots()
-        exclusionSlots.forEach { slot ->
+        // 系统手势排除直接设在 capture 窗口上，不再单独开“exclusion 窗口”：
+        // 每个 corner 原来是 capture + exclusion 两层，现在只剩一层。
+        captureSlots.forEach { slot ->
             val anchorEnabled = when (slot.anchor) {
                 CornerAnchor.LEFT -> corner.leftEnabled
                 CornerAnchor.RIGHT -> corner.rightEnabled
             }
-            val enabled = anchorEnabled &&
+            val enabled = corner.overrideSystemNav &&
+                anchorEnabled &&
                 corner.hasActiveTriggerZone() &&
                 stripEnabled(corner, slot.strip)
-            syncExclusionSlot(slot, enabled)
+            applyStripExclusionRects(slot, enabled)
         }
     }
 
-    private fun syncExclusionSlot(slot: ExclusionSlot, enabled: Boolean) {
-        if (!enabled) {
-            if (slot.view.parent != null) {
-                runCatching { windowManager.removeView(slot.view) }
-            }
+    private fun applyStripExclusionRects(slot: CaptureSlot, enabled: Boolean) {
+        val rect = if (enabled) zoneLayout.stripRect(slot.anchor, slot.strip) else null
+        if (rect == null || rect.width() <= 0f || rect.height() <= 0f) {
+            slot.host.systemGestureExclusionRects = emptyList()
             return
         }
-        val rect = zoneLayout.stripRect(slot.anchor, slot.strip) ?: run {
-            if (slot.view.parent != null) {
-                runCatching { windowManager.removeView(slot.view) }
-            }
-            return
-        }
-        applyStripCaptureLayout(slot.params, rect)
-        if (slot.view.parent == null) {
-            runCatching { windowManager.addView(slot.view, slot.params) }
-                .onFailure { Log.e(TAG, "Failed to attach corner exclusion", it) }
-        } else {
-            runCatching { windowManager.updateViewLayout(slot.view, slot.params) }
-                .onFailure { Log.e(TAG, "Failed to update corner exclusion", it) }
-        }
-    }
-
-    private fun detachExclusions() {
-        exclusionSlots.forEach { slot ->
-            runCatching { windowManager.removeView(slot.view) }
-        }
+        slot.host.systemGestureExclusionRects = listOf(
+            Rect(0, 0, rect.width().toInt(), rect.height().toInt()),
+        )
     }
 
     private fun ensureOverlayAttached() {
@@ -710,7 +662,6 @@ internal class CornerGestureController(
                 restoreCaptureSize()
                 detachOverlay()
                 detachCaptures()
-                detachExclusions()
             },
             showTriggers = { syncCaptureWindows() },
             rawX = rawX,
