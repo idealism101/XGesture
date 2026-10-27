@@ -15,6 +15,9 @@ object OverlayPassthrough {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val echoGuard = PassthroughEchoGuard()
 
+    /** 触发器恢复后再留一小段给注入事件落地，然后解除回声窗口（见 [PassthroughEchoGuard]）。 */
+    private val disarmRunnable = Runnable { echoGuard.disarm() }
+
     fun run(
         hideTriggers: () -> Unit,
         showTriggers: () -> Unit,
@@ -30,6 +33,10 @@ object OverlayPassthrough {
             onComplete()
             return
         }
+        // 事务从「隐藏触发器」这一拍就开始：窗口真正从输入派发里消失之前落到同一点的点击
+        // 也必须拦住，否则会并行出两条放行事务、注入两次点击。
+        mainHandler.removeCallbacks(disarmRunnable)
+        echoGuard.arm(rawX, rawY)
         hideTriggers()
         val restored = AtomicBoolean(false)
         var safetyRestore: Runnable? = null
@@ -37,7 +44,12 @@ object OverlayPassthrough {
         val safeRestore = {
             if (restored.compareAndSet(false, true)) {
                 safetyRestore?.let { mainHandler.removeCallbacks(it) }
-                showTriggers()
+                runCatching { showTriggers() }
+                    .onFailure { Log.e(TAG, "showTriggers failed during passthrough restore", it) }
+                // 触发器已恢复：再给注入事件留一小段落地宽限就彻底解除。
+                // 旧实现是「注入后固定 400ms」，会把用户紧接着的第二次点击也当成回声吞掉，
+                // 真机表现就是「点一下没反应，再点还是没反应」。
+                mainHandler.postDelayed(disarmRunnable, ECHO_GRACE_MS)
                 onComplete()
             }
         }
@@ -51,9 +63,9 @@ object OverlayPassthrough {
 
         val scheduleInject = {
             runAfterNextFrames(frames = framesBeforeInject) {
+                // 安全恢复已经收尾（主线程卡顿超过 2s）：不再补一次没人守着的注入。
+                if (restored.get()) return@runAfterNextFrames
                 try {
-                    // 注入前记录位置：这一下的回声不允许再次触发放行。
-                    echoGuard.arm(rawX, rawY)
                     InputTapUtil.dispatchTapAsync(rawX, rawY, onFinished = { ok ->
                         if (!ok) {
                             Log.w(TAG, "dispatchTapAsync failed at ($rawX, $rawY)")
@@ -91,4 +103,7 @@ object OverlayPassthrough {
     private const val DEFAULT_FRAMES_BEFORE_INJECT = 5
     private const val DEFAULT_RESTORE_DELAY_MS = 120L
     private const val SAFETY_RESTORE_MS = 2000L
+
+    /** 触发器恢复后保留回声窗口的落地宽限：只覆盖注入事件的投递抖动，不吞用户的新点击。 */
+    private const val ECHO_GRACE_MS = 48L
 }
