@@ -12,6 +12,56 @@ Release pages are published with the English notes first, then the Chinese ones.
 notes follow the system language: `notesEn` is shown to non-Chinese locales and `notes` to
 Chinese ones, each falling back to the other when a version is missing.
 
+## [1.52.0] - 2026-10-27
+
+### Added
+- New "Edge card" message style: one card pinned to the screen edge, showing only the avatar while collapsed and expanding for new messages, collapsed by swiping right, expanded by swiping left, dismissed by swiping up or down, with several conversations stacked at once
+- New recording dock: pause, resume and stop while recording, plus a direct entry to screen drawing
+- New "Gallery image editor" action: pick a photo from the gallery and open it in the built-in editor
+- New app clone support: clones can be bound to gestures, the quick launcher, gesture macros, the holographic launcher and the widget panel, and clones are marked in the task switcher and search
+- New per-clone hiding of apps, and clones in the freezer can be frozen and paused on their own
+- New module-by-module restore for settings backups: pick the modules to restore before importing, and only those are overwritten
+- New multi-select for share targets, so several handlers can be added at once
+- New "Show icon labels" and "Mirror layout on right side" switches for the quick launcher
+- New "Show as original" mode for custom floating-ball images: keeps the image's aspect ratio, with no crop and no round mask
+- New vibration switch for floating-ball gestures, and a single tap now fires right away when double-tap has no action
+- The ring launcher now pre-selects the first slot below the ball on long press, so releasing launches it
+- New left margin setting for each page of the widget panel
+- New "Toggle shake gestures" action
+
+### Changed
+- App pickers now share one grid layout and mark frozen, paused and cloned apps
+- The app index keeps frozen and paused apps listed with badges, and tapping a frozen app unfreezes it first
+- Freezing and unfreezing now run for every user, so clones are handled along with the main app
+- The icon library lists apps per tab on demand and loads icons asynchronously, so long lists stay smooth
+- The share target picker is grouped by app with expand animations, and searches by pinyin and initials
+- The text picker's plus-button speed sliders now start at 0% and step in 1% increments
+- The top bar blur stays on, so programmatic positioning no longer flashes it transparent first
+- Icon rows match the column width when labels are off, making the quick launcher more compact
+- The message ball and screen control panel draw their own shadows instead of using system elevation
+- App pickers show real icons without the uniform background plate
+- The side message style is now called "Side bubble"
+
+### Fixed
+- Fixed clone launches hanging on the trampoline, ignoring the confirmation, or swallowing the next tap
+- Fixed clone entries being duplicated in the index or dropped from the widget panel by de-duplication
+- Fixed a crash when the hidden apps list lists clones
+- Fixed paused clones being resumable only with Root, now with a clear message
+- Fixed two taps in a row doing nothing in tap-through mode
+- Fixed the clipboard link marquee stealing swipe gestures
+- Fixed duplicate callbacks for the same copy stacking several smart action buttons
+- Fixed the floating ball's full-screen touch window not shrinking back, leaving an invisible full-screen layer
+- Fixed edge cards not sitting flush after a rotation or a content update
+- Fixed edge cards showing no icon when the notification has no large image
+- Fixed back double-tap misfiring on the home screen, while riding and on a flat lit screen, and cut its sampling drain while idle and with the screen off
+- Fixed the brightness range and lower bound being read wrong on some devices
+- Fixed reading in a small window falling back to a plain free window on Meizu and Nubia
+- Fixed the text engine reusing the draft left by the image share editor
+- Fixed two-stage gestures on the right edge line
+- Fixed the floating ball vibrating twice for Back, Home and Recents
+- Fixed a white flash when the app cold-starts in dark mode
+- Completed missing Arabic and Japanese strings
+
 ## [1.50.5] - 2026-10-23
 
 ### Added
