@@ -876,6 +876,8 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
     }
 
     private val iconView = ImageView(context)
+    /** 连 App 图标都取不到时的占位：首字圆形底。 */
+    private val fallbackView = TextView(context)
     private val badgeView = TextView(context)
     private val titleView = TextView(context)
     private val contentView = TextView(context)
@@ -901,6 +903,12 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
         badgeView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
         badgeView.includeFontPadding = false
         badgeView.setBackgroundDrawable(circleDrawable(Color.parseColor("#E74749")))
+        fallbackView.gravity = Gravity.CENTER
+        fallbackView.setTextColor(Color.WHITE)
+        fallbackView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+        fallbackView.includeFontPadding = false
+        fallbackView.setBackgroundDrawable(circleDrawable(Color.parseColor("#9AA0A6")))
+        fallbackView.visibility = View.GONE
         titleView.maxLines = 1
         titleView.ellipsize = TextUtils.TruncateAt.END
         titleView.setTextColor(Color.parseColor("#2B2B2B"))
@@ -926,6 +934,15 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
         avatarContainer.clipToPadding = false
         avatarContainer.addView(
             iconView,
+            FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER).apply {
+                leftMargin = dp(4)
+                topMargin = dp(4)
+                rightMargin = dp(4)
+                bottomMargin = dp(4)
+            },
+        )
+        avatarContainer.addView(
+            fallbackView,
             FrameLayout.LayoutParams(dp(30), dp(30), Gravity.CENTER).apply {
                 leftMargin = dp(4)
                 topMargin = dp(4)
@@ -978,9 +995,20 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
     fun bind(plan: MessageDisplayPlan, state: EdgeCardUiState) {
         val data = plan.data
         val settings = plan.settings
-        val icon = data.conversationIcon ?: data.largeIcon
-        iconView.setImageBitmap(icon)
-        titleView.text = NotificationData.overlayHeaderTitle(data)
+        val title = NotificationData.overlayHeaderTitle(data)
+        // 三级回落：会话/通知大图 → App 图标 → 首字占位，避免 Threads 这类无大图通知出现白板。
+        val icon = data.conversationIcon ?: data.largeIcon ?: data.appIcon
+        if (icon != null) {
+            iconView.setImageBitmap(icon)
+            iconView.visibility = View.VISIBLE
+            fallbackView.visibility = View.GONE
+        } else {
+            iconView.setImageBitmap(null)
+            iconView.visibility = View.GONE
+            fallbackView.text = title.trim().firstOrNull()?.toString().orEmpty()
+            fallbackView.visibility = View.VISIBLE
+        }
+        titleView.text = title
         contentView.text = data.content
         val badge = state.badgeText()
         if (badge != null) {
