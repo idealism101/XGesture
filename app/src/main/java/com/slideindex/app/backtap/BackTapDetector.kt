@@ -128,21 +128,16 @@ class BackTapDetector(
         synchronized(this) {
             val wasOn = isScreenOn
             isScreenOn = isOn
-            if (isOn) {
-                // 亮屏即退出挂起：用户可能正拿着手机敲背面
-                cancelPendingSuspend()
-                isSuspended = false
-            }
+            // 亮屏不再强制退出挂起：平放时依然不需要敲击，拿起（倾角变化）才恢复。
+            // 口袋挂起只在息屏生效，applyActivationState 会按新的 isScreenOn 重新判断。
             applyActivationState()
             // 部分设备息屏后会挂起非唤醒传感器，重新注册以恢复采样
             if (isListening && isRegistered && !isOn && wasOn) {
                 sensorHub.unregister(this)
                 registerSensors()
             }
-            if (!isOn && wasOn) {
-                // 息屏瞬间若已是平放/口袋姿态，立刻开始待停计时
-                maybeSuspendForContext()
-            }
+            // 屏幕状态变化会改变"口袋"的判定条件，重新评估是否该进入待停
+            maybeSuspendForContext()
         }
     }
 
@@ -247,10 +242,13 @@ class BackTapDetector(
             cancelPendingSuspend()
             return
         }
-        // 息屏且已判定为"平放/口袋"：保持挂起，只留 5Hz 倾角监视
+        // 已判定为"平放/口袋"：保持挂起，只留 5Hz 倾角监视（平放时亮屏也不需要敲击）
         if (isSuspended) {
-            releaseWakeLock()
-            return
+            if (isContextBlocking()) {
+                releaseWakeLock()
+                return
+            }
+            isSuspended = false
         }
         if (!isScreenOn) acquireWakeLock() else releaseWakeLock()
         if (!isRegistered) {
@@ -292,9 +290,12 @@ class BackTapDetector(
         if (pocket) maybeSuspendForContext() else resumeFromContext()
     }
 
+    /** 当前姿态是否完全不需要检测：平放（桌上/床头，亮屏息屏都算），或息屏且在口袋。 */
+    private fun isContextBlocking(): Boolean = isFlat || (isPocketNow && !isScreenOn)
+
     private fun maybeSuspendForContext() {
-        if (isScreenOn || isSuspended || !isListening || isPaused) return
-        if (!isFlat && !isPocketNow) return
+        if (isSuspended || !isListening || isPaused) return
+        if (!isContextBlocking()) return
         handler.removeCallbacks(suspendRunnable)
         handler.postDelayed(suspendRunnable, SUSPEND_DEBOUNCE_MS)
     }
@@ -304,8 +305,8 @@ class BackTapDetector(
     }
 
     private fun suspendForContext() {
-        if (!isListening || isPaused || isScreenOn) return
-        if (!isFlat && !isPocketNow) return
+        if (!isListening || isPaused) return
+        if (!isContextBlocking()) return
         if (isRegistered) {
             sensorHub.unregister(this)
             isRegistered = false
@@ -320,7 +321,7 @@ class BackTapDetector(
             cancelPendingSuspend()
             return
         }
-        if (!isScreenOn && isFlat && isPocketNow) return
+        if (isContextBlocking()) return
         isSuspended = false
         cancelPendingSuspend()
         applyActivationState()
