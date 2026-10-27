@@ -9,6 +9,13 @@ object ScreenRecordHelper {
     val isRecording: Boolean
         get() = ScreenRecordService.isRecording
 
+    val isPaused: Boolean
+        get() = ScreenRecordService.isPaused
+
+    fun pause(context: Context) = ScreenRecordService.pause(context)
+
+    fun resume(context: Context) = ScreenRecordService.resume(context)
+
     /**
      * Toggles recording. Starting launches the system capture-consent UI; stopping ends the service.
      * @return true when an action was dispatched.

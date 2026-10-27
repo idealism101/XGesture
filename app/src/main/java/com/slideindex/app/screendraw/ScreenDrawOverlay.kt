@@ -118,12 +118,17 @@ object ScreenDrawOverlay {
 
     val isShowing: Boolean get() = canvas != null
 
+    /** 绘制开/关回调（供录制 dock 等外部悬浮 UI 避让，不用轮询）。 */
+    var onShowingChanged: ((Boolean) -> Unit)? = null
+
     fun toggle(context: Context): Boolean {
         if (isShowing) {
             dismiss()
             return true
         }
-        return show(context)
+        val shown = show(context)
+        if (shown) onShowingChanged?.invoke(true)
+        return shown
     }
 
     fun show(context: Context): Boolean {
@@ -1257,6 +1262,7 @@ object ScreenDrawOverlay {
         hostContext = null
         saving = false
         Log.i(TAG, "dismissed")
+        onShowingChanged?.invoke(false)
     }
 
     private fun toast(context: Context, resId: Int) {

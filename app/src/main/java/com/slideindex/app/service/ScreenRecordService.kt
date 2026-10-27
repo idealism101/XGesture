@@ -24,6 +24,8 @@ import android.util.Log
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import com.slideindex.app.R
+import com.slideindex.app.screencapture.RecordingDock
+import com.slideindex.app.screendraw.ScreenDrawOverlay
 import com.slideindex.app.util.ForegroundNotificationChannels
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -39,6 +41,7 @@ class ScreenRecordService : Service() {
     private var mediaRecorder: MediaRecorder? = null
     private var outputUri: Uri? = null
     private var outputPfd: android.os.ParcelFileDescriptor? = null
+    private var recordingDock: RecordingDock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -67,6 +70,8 @@ class ScreenRecordService : Service() {
                 }
             }
             ACTION_STOP -> stopRecording()
+            ACTION_PAUSE -> pauseRecording()
+            ACTION_RESUME -> resumeRecording()
         }
         return START_NOT_STICKY
     }
@@ -132,6 +137,7 @@ class ScreenRecordService : Service() {
             return
         }
         isRecording = true
+        showDock()
     }
 
     private fun createMediaRecorder(): MediaRecorder {
@@ -171,8 +177,75 @@ class ScreenRecordService : Service() {
         stopSelf()
     }
 
+    private fun pauseRecording() {
+        if (!isRecording || isPaused) return
+        val recorder = mediaRecorder ?: return
+        if (runCatching { recorder.pause() }.isFailure) {
+            Log.w(TAG, "MediaRecorder.pause failed")
+            return
+        }
+        isPaused = true
+        recordingDock?.setPaused(true)
+    }
+
+    private fun resumeRecording() {
+        if (!isRecording || !isPaused) return
+        val recorder = mediaRecorder ?: return
+        if (runCatching { recorder.resume() }.isFailure) {
+            Log.w(TAG, "MediaRecorder.resume failed")
+            return
+        }
+        isPaused = false
+        recordingDock?.setPaused(false)
+    }
+
+    /**
+     * 录制期间挂一块小 dock：暂停/继续、停止、进入全局绘制。
+     *
+     * 绘制展开时把 dock 临时收起（绘制自带工具条，两个悬浮条会打架），
+     * 退出绘制后再放回来——靠 [ScreenDrawOverlay.onShowingChanged] 回调，不用轮询。
+     */
+    private fun showDock() {
+        if (recordingDock != null) {
+            recordingDock?.setVisible(true)
+            return
+        }
+        val dock = RecordingDock(
+            appContext = applicationContext,
+            onTogglePause = { if (isPaused) resumeRecording() else pauseRecording() },
+            onStop = { stopRecording() },
+            onToggleDraw = {
+                if (ScreenDrawOverlay.isShowing) {
+                    ScreenDrawOverlay.dismiss()
+                } else {
+                    ScreenDrawOverlay.toggle(this)
+                }
+            },
+        )
+        recordingDock = dock
+        dock.setPaused(isPaused)
+        dock.setDrawActive(ScreenDrawOverlay.isShowing)
+        dock.setVisible(!ScreenDrawOverlay.isShowing)
+        dock.show()
+        ScreenDrawOverlay.onShowingChanged = { showing ->
+            recordingDock?.setDrawActive(showing)
+            recordingDock?.setVisible(!showing)
+        }
+    }
+
+    private fun dismissDock() {
+        ScreenDrawOverlay.onShowingChanged = null
+        recordingDock?.hide()
+        recordingDock = null
+    }
+
     private fun stopRecordingInternal(notify: Boolean) {
         isRecording = false
+        dismissDock()
+        // 暂停态直接 stop() 在部分机型上会抛 IllegalStateException，先 resume 再停。
+        val wasPaused = isPaused
+        isPaused = false
+        if (wasPaused) runCatching { mediaRecorder?.resume() }
         runCatching { mediaRecorder?.stop() }
         runCatching { mediaRecorder?.reset() }
         runCatching { mediaRecorder?.release() }
@@ -247,11 +320,17 @@ class ScreenRecordService : Service() {
         private const val NOTIFICATION_ID = 4207
         private const val ACTION_START = "com.slideindex.app.action.SCREEN_RECORD_START"
         private const val ACTION_STOP = "com.slideindex.app.action.SCREEN_RECORD_STOP"
+        private const val ACTION_PAUSE = "com.slideindex.app.action.SCREEN_RECORD_PAUSE"
+        private const val ACTION_RESUME = "com.slideindex.app.action.SCREEN_RECORD_RESUME"
         private const val EXTRA_RESULT_CODE = "result_code"
         private const val EXTRA_RESULT_DATA = "result_data"
 
         @Volatile
         var isRecording: Boolean = false
+            private set
+
+        @Volatile
+        var isPaused: Boolean = false
             private set
 
         fun start(context: Context, resultCode: Int, data: Intent) {
@@ -262,6 +341,16 @@ class ScreenRecordService : Service() {
                 putExtra(EXTRA_RESULT_DATA, data)
             }
             app.startForegroundService(intent)
+        }
+
+        fun pause(context: Context) {
+            val app = context.applicationContext
+            app.startService(Intent(app, ScreenRecordService::class.java).apply { action = ACTION_PAUSE })
+        }
+
+        fun resume(context: Context) {
+            val app = context.applicationContext
+            app.startService(Intent(app, ScreenRecordService::class.java).apply { action = ACTION_RESUME })
         }
 
         fun stop(context: Context) {
