@@ -12,6 +12,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import com.slideindex.app.shake.MotionSensorHub
+import kotlin.math.acos
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.sqrt
@@ -44,7 +45,7 @@ class BackTapDetector(
 
     private val wakeLockRenewRunnable = Runnable {
         synchronized(this) {
-            if (!isWakeLockHeld || !isListening || isPaused || isScreenOn) return@Runnable
+            if (!isWakeLockHeld || !isListening || isPaused || isScreenOn || isSuspended) return@Runnable
             wakeLock?.release()
             isWakeLockHeld = false
             acquireWakeLock()
@@ -57,15 +58,26 @@ class BackTapDetector(
     private val hpZ = HighPassFilter(CUTOFF_HP_HZ)
     private val lpMag = LowPassFilter(CUTOFF_LP_HZ)
     private val noiseEstimator = NoiseEstimator(NOISE_EMA_ALPHA)
-    private val sceneLp = LowPassFilter(SCENE_LP_CUTOFF_HZ)
 
     // 运行状态
     @Volatile private var isListening = false
     @Volatile private var isRegistered = false
+
+    /**
+     * 5Hz 倾角监视器：只判断手机是否平放（桌面/床头的典型姿态），不参与敲击判定。
+     *
+     * 息屏 + 平放/口袋持续 [SUSPEND_DEBOUNCE_MS] 后停掉 500Hz 采样并释放唤醒锁；
+     * 拿起（倾角变化）或离开口袋时立即恢复。这样"始终触发"在手持场景下不变，
+     * 但整夜放桌上不再常驻采样。
+     */
+    private val tiltWatcher = Any()
+    @Volatile private var isFlat = false
+    @Volatile private var isSuspended = false
+    @Volatile private var isPocketNow = false
+    private val suspendRunnable = Runnable { suspendForContext() }
     private var activationMode = BackTapMode.SCREEN_ON
     @Volatile private var isScreenOn = false
     @Volatile private var isPaused = false
-    private var currentDelayUs = SensorManager.SENSOR_DELAY_FASTEST
 
     // 可调参数
     private var baseThreshold = DEFAULT_THRESHOLD
@@ -90,14 +102,6 @@ class BackTapDetector(
     // 环境传感器状态
     private var isProximityNear = false
     private var lastLightLux = 0f
-
-    // 场景感知
-    private var pocketSinceNs = 0L
-    private var desktopSinceNs = 0L
-    private var motionSinceNs = 0L
-    private var scene = Scene.HANDHELD
-
-    enum class Scene { HANDHELD, DESKTOP, IN_MOTION, POCKET }
 
     // 灵敏度 1-10，越高阈值越低（越灵敏）
     fun setSensitivity(value: Int) {
@@ -124,11 +128,20 @@ class BackTapDetector(
         synchronized(this) {
             val wasOn = isScreenOn
             isScreenOn = isOn
+            if (isOn) {
+                // 亮屏即退出挂起：用户可能正拿着手机敲背面
+                cancelPendingSuspend()
+                isSuspended = false
+            }
             applyActivationState()
             // 部分设备息屏后会挂起非唤醒传感器，重新注册以恢复采样
             if (isListening && isRegistered && !isOn && wasOn) {
                 sensorHub.unregister(this)
                 registerSensors()
+            }
+            if (!isOn && wasOn) {
+                // 息屏瞬间若已是平放/口袋姿态，立刻开始待停计时
+                maybeSuspendForContext()
             }
         }
     }
@@ -144,6 +157,7 @@ class BackTapDetector(
             setRange(range)
             reset()
             isListening = true
+            registerTiltWatcher()
             applyActivationState()
         }
     }
@@ -151,7 +165,12 @@ class BackTapDetector(
     fun stop() {
         synchronized(this) {
             if (!isListening) return
+            cancelPendingSuspend()
             if (isRegistered) sensorHub.unregister(this)
+            sensorHub.unregister(tiltWatcher)
+            isSuspended = false
+            isFlat = false
+            isPocketNow = false
             releaseWakeLock()
             isListening = false
             isRegistered = false
@@ -181,7 +200,7 @@ class BackTapDetector(
         sensorHub.register(
             MotionSensorHub.Kind.ACCELEROMETER,
             this,
-            currentDelayUs,
+            SensorManager.SENSOR_DELAY_FASTEST,
         ) { processAccelerometer(it) }
         if (sensorHub.hasProximity) {
             sensorHub.register(
@@ -208,6 +227,8 @@ class BackTapDetector(
                 releaseWakeLock()
                 reset()
             }
+            isSuspended = false
+            cancelPendingSuspend()
             return
         }
         val shouldRegister = when (activationMode) {
@@ -215,18 +236,94 @@ class BackTapDetector(
             BackTapMode.SCREEN_OFF -> !isScreenOn
             BackTapMode.SCREEN_ON -> isScreenOn
         }
-        if (shouldRegister) {
-            if (!isScreenOn) acquireWakeLock() else releaseWakeLock()
-            if (!isRegistered) {
-                registerSensors()
-                isRegistered = true
+        if (!shouldRegister) {
+            if (isRegistered) {
+                sensorHub.unregister(this)
+                isRegistered = false
+                releaseWakeLock()
+                reset()
             }
-        } else if (isRegistered) {
+            isSuspended = false
+            cancelPendingSuspend()
+            return
+        }
+        // 息屏且已判定为"平放/口袋"：保持挂起，只留 5Hz 倾角监视
+        if (isSuspended) {
+            releaseWakeLock()
+            return
+        }
+        if (!isScreenOn) acquireWakeLock() else releaseWakeLock()
+        if (!isRegistered) {
+            registerSensors()
+            isRegistered = true
+        }
+    }
+
+    private fun registerTiltWatcher() {
+        sensorHub.register(
+            MotionSensorHub.Kind.ACCELEROMETER,
+            tiltWatcher,
+            TILT_WATCH_DELAY_US,
+        ) { processTilt(it) }
+    }
+
+    /**
+     * 5Hz 倾角监视：平放（含正面朝下）进入待停状态，拿起则立刻恢复高频检测。
+     * 只用于省电门控，不参与敲击判定。
+     */
+    private fun processTilt(event: SensorEvent) {
+        val x = event.values[0]
+        val y = event.values[1]
+        val z = event.values[2]
+        val norm = sqrt(x * x + y * y + z * z)
+        if (norm < 0.1f) return
+        val incline = Math.toDegrees(acos((z / norm).toDouble().coerceIn(-1.0, 1.0)))
+        val flat = incline < FLAT_INCLINE_DEG || incline > 180.0 - FLAT_INCLINE_DEG
+        if (flat == isFlat) return
+        isFlat = flat
+        if (flat) maybeSuspendForContext() else resumeFromContext()
+    }
+
+    private fun updatePocketState() {
+        val pocket = isProximityNear &&
+            (!sensorHub.hasLight || lastLightLux < POCKET_LIGHT_LUX_THRESHOLD)
+        if (pocket == isPocketNow) return
+        isPocketNow = pocket
+        if (pocket) maybeSuspendForContext() else resumeFromContext()
+    }
+
+    private fun maybeSuspendForContext() {
+        if (isScreenOn || isSuspended || !isListening || isPaused) return
+        if (!isFlat && !isPocketNow) return
+        handler.removeCallbacks(suspendRunnable)
+        handler.postDelayed(suspendRunnable, SUSPEND_DEBOUNCE_MS)
+    }
+
+    private fun cancelPendingSuspend() {
+        handler.removeCallbacks(suspendRunnable)
+    }
+
+    private fun suspendForContext() {
+        if (!isListening || isPaused || isScreenOn) return
+        if (!isFlat && !isPocketNow) return
+        if (isRegistered) {
             sensorHub.unregister(this)
             isRegistered = false
-            releaseWakeLock()
             reset()
         }
+        releaseWakeLock()
+        isSuspended = true
+    }
+
+    private fun resumeFromContext() {
+        if (!isSuspended) {
+            cancelPendingSuspend()
+            return
+        }
+        if (!isScreenOn && isFlat && isPocketNow) return
+        isSuspended = false
+        cancelPendingSuspend()
+        applyActivationState()
     }
 
     private fun reset() {
@@ -239,17 +336,11 @@ class BackTapDetector(
         sustainedMotion = false
         isProximityNear = false
         lastLightLux = 0f
-        pocketSinceNs = 0L
-        desktopSinceNs = 0L
-        motionSinceNs = 0L
-        scene = Scene.HANDHELD
-        currentDelayUs = SensorManager.SENSOR_DELAY_FASTEST
         hpX.reset()
         hpY.reset()
         hpZ.reset()
         lpMag.reset()
         noiseEstimator.reset()
-        sceneLp.reset()
     }
 
     private fun ensureWakeLock() {
@@ -302,9 +393,8 @@ class BackTapDetector(
         // 3. 持续晃动 / 连续波形检测
         updateSustainedMotion(energy, t)
 
-        // 4. 场景感知与动态采样率
+        // 4. 口袋判定（只用于屏蔽敲击；采样率不再随场景切换，避免反复重注册传感器）
         val isPocket = isProximityNear && (!sensorHub.hasLight || lastLightLux < POCKET_LIGHT_LUX_THRESHOLD)
-        updateScene(energy, t, isPocket)
 
         // 5. 口袋/遮挡状态立即屏蔽敲击，避免误触发
         if (isPocket) {
@@ -361,11 +451,13 @@ class BackTapDetector(
         // 多数设备的距离传感器只报告 0（近）和 maximumRange（远），按半阈值判断即可兼容
         val maxRange = event.sensor.maximumRange
         isProximityNear = event.values[0] < maxRange * 0.75f
+        updatePocketState()
     }
 
     @Synchronized
     private fun processLight(event: SensorEvent) {
         lastLightLux = event.values[0]
+        updatePocketState()
     }
 
     private fun initFilters(x: Float, y: Float, z: Float, t: Long) {
@@ -373,7 +465,6 @@ class BackTapDetector(
         hpY.init(y, t)
         hpZ.init(z, t)
         lpMag.init(0f, t)
-        sceneLp.init(0f, t)
         noiseEstimator.init(0f)
         lastQuietNs = t
     }
@@ -384,63 +475,6 @@ class BackTapDetector(
             sustainedMotion = false
         } else if (t - lastQuietNs > SUSTAINED_MOTION_NS) {
             sustainedMotion = true
-        }
-    }
-
-    private fun updateScene(energy: Float, t: Long, isPocket: Boolean) {
-        val sceneScore = sceneLp.update(energy, t)
-        val wasScene = scene
-
-        // 快速唤醒：静置/口袋中检测到明显运动时立即恢复手持模式，避免数秒延迟
-        if ((scene == Scene.DESKTOP || scene == Scene.POCKET) && energy > FAST_WAKE_ENERGY_THRESHOLD) {
-            desktopSinceNs = 0L
-            pocketSinceNs = 0L
-            motionSinceNs = t
-            scene = Scene.HANDHELD
-            if (scene != wasScene) updateSensorDelay()
-            return
-        }
-
-        if (isPocket) {
-            desktopSinceNs = 0L
-            motionSinceNs = 0L
-            if (pocketSinceNs == 0L) pocketSinceNs = t
-            if (t - pocketSinceNs > POCKET_SETTLE_NS) scene = Scene.POCKET
-        } else {
-            pocketSinceNs = 0L
-            when {
-                sceneScore < SCENE_LOW_MOTION -> {
-                    motionSinceNs = 0L
-                    if (desktopSinceNs == 0L) desktopSinceNs = t
-                    if (t - desktopSinceNs > SCENE_SETTLE_NS) scene = Scene.DESKTOP
-                }
-                sceneScore > SCENE_HIGH_MOTION -> {
-                    desktopSinceNs = 0L
-                    if (motionSinceNs == 0L) motionSinceNs = t
-                    if (t - motionSinceNs > SCENE_MOTION_SETTLE_NS) scene = Scene.IN_MOTION
-                }
-                else -> {
-                    desktopSinceNs = 0L
-                    motionSinceNs = 0L
-                    scene = Scene.HANDHELD
-                }
-            }
-        }
-
-        if (scene != wasScene) updateSensorDelay()
-    }
-
-    private fun updateSensorDelay() {
-        val target = when (scene) {
-            Scene.HANDHELD -> SensorManager.SENSOR_DELAY_FASTEST
-            else -> SensorManager.SENSOR_DELAY_GAME
-        }
-        if (target == currentDelayUs) return
-        synchronized(this) {
-            currentDelayUs = target
-            if (isRegistered) {
-                registerSensors()
-            }
         }
     }
 
@@ -552,10 +586,14 @@ class BackTapDetector(
         private const val WAKE_LOCK_TIMEOUT_MS = 10 * 60 * 1000L
         private const val WAKE_LOCK_RENEW_MS = WAKE_LOCK_TIMEOUT_MS - 60_000L
 
+        // 省电门控：平放/口袋持续这么久后停掉高频检测
+        private const val TILT_WATCH_DELAY_US = 200_000 // 5Hz，只算倾角
+        private const val FLAT_INCLINE_DEG = 25.0
+        private const val SUSPEND_DEBOUNCE_MS = 60_000L
+
         // 滤波器截止频率
         private const val CUTOFF_HP_HZ = 5f
         private const val CUTOFF_LP_HZ = 80f
-        private const val SCENE_LP_CUTOFF_HZ = 0.5f
 
         // 灵敏度曲线：值越大阈值越低
         private const val MAX_THRESHOLD = 16f // m/s^2
@@ -584,16 +622,8 @@ class BackTapDetector(
         private const val MIN_MAX_GAP_NS = 250_000_000L
         private const val RANGE_STEP_NS = 60_000_000L
 
-        // 场景感知
-        private const val SCENE_LOW_MOTION = 0.8f
-        private const val SCENE_HIGH_MOTION = 2.5f
-        private const val SCENE_SETTLE_NS = 2_000_000_000L
-        private const val SCENE_MOTION_SETTLE_NS = 500_000_000L
-        private const val FAST_WAKE_ENERGY_THRESHOLD = 2.0f
-
         // 口袋判断：距离传感器被遮挡且光线较暗
         private const val POCKET_LIGHT_LUX_THRESHOLD = 10f
-        private const val POCKET_SETTLE_NS = 300_000_000L
 
         private const val DEFAULT_THRESHOLD = 6f
         private const val DEFAULT_MAX_GAP_NS = 550_000_000L
