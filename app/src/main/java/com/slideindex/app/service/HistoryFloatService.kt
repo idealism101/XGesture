@@ -264,6 +264,7 @@ class HistoryFloatService : Service() {
         }
 
         mainParams.type = OverlayWindowTypes.overlayWindowType(this)
+        mainParams.title = "XG:side-handle"
         mainParams.format = PixelFormat.RGBA_8888
         mainParams.width = LayoutParams.WRAP_CONTENT
         mainParams.height = LayoutParams.WRAP_CONTENT

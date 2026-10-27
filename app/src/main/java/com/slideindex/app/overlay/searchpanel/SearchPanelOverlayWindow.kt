@@ -451,6 +451,7 @@ object SearchPanelOverlayWindow {
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT,
         ).apply {
+            title = "XG:search-panel"
             gravity = Gravity.TOP or Gravity.START
             @Suppress("DEPRECATION")
             softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE

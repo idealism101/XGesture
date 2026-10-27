@@ -55,6 +55,7 @@ object OverlayCompositor {
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT,
         ).apply {
+            title = "XG:compositor"
             gravity = Gravity.TOP or Gravity.START
             layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES

@@ -168,6 +168,7 @@ class DragDropFlowController(
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT,
         ).apply {
+            title = "XG:drag-anchor"
             gravity = Gravity.BOTTOM or Gravity.END
         }
 

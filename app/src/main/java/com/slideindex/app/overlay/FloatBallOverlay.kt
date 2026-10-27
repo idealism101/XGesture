@@ -1468,9 +1468,9 @@ object FloatBallOverlay {
             )
         }
 
-        val displayLp = buildDisplayLayoutParams(hostContext)
-        val touchLp = buildTouchLayoutParams(hostContext)
-        val lineTouchLp = buildTouchLayoutParams(hostContext)
+        val displayLp = buildDisplayLayoutParams(hostContext, "XG:ball-display")
+        val touchLp = buildTouchLayoutParams(hostContext, "XG:ball-touch")
+        val lineTouchLp = buildTouchLayoutParams(hostContext, "XG:ball-line")
 
         val displayAdded = runCatching { wm.addView(displayHost, displayLp) }
             .onFailure { Log.e(TAG, "failed to add display overlay", it) }
@@ -1971,7 +1971,10 @@ object FloatBallOverlay {
         }
     }
 
-    private fun buildDisplayLayoutParams(context: Context): WindowManager.LayoutParams {
+    private fun buildDisplayLayoutParams(
+        context: Context,
+        title: String = "XG:ball-display",
+    ): WindowManager.LayoutParams {
         return WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -1982,6 +1985,7 @@ object FloatBallOverlay {
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT
         ).apply {
+            this.title = title
             gravity = Gravity.TOP or Gravity.START
             layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -1989,7 +1993,10 @@ object FloatBallOverlay {
         }
     }
 
-    private fun buildTouchLayoutParams(context: Context): WindowManager.LayoutParams {
+    private fun buildTouchLayoutParams(
+        context: Context,
+        title: String = "XG:ball-touch",
+    ): WindowManager.LayoutParams {
         return WindowManager.LayoutParams(
             1,
             1,
@@ -2001,6 +2008,7 @@ object FloatBallOverlay {
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT
         ).apply {
+            this.title = title
             gravity = Gravity.TOP or Gravity.START
             layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES

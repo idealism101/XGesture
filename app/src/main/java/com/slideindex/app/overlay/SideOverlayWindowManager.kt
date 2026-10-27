@@ -685,7 +685,7 @@ internal class SideOverlayWindowManager(
     }
 
     private fun createCaptureLayoutParams(): WindowManager.LayoutParams =
-        OverlayWindowTypes.createCaptureParams(context)
+        OverlayWindowTypes.createCaptureParams(context, "XG:side-${side.name.lowercase()}")
 
     private fun applyCaptureTouchFlags(params: WindowManager.LayoutParams) {
         OverlayWindowTypes.applyCaptureTouchFlags(params)

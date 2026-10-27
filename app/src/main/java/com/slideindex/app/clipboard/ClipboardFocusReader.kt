@@ -82,6 +82,7 @@ object ClipboardFocusReader {
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.RGBA_8888
         ).apply {
+            title = "XG:clipboard-focus"
             screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
             gravity = Gravity.START or Gravity.TOP
             x = 0

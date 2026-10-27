@@ -333,7 +333,10 @@ internal class CornerGestureController(
                         anchor = anchor,
                         strip = strip,
                         host = host,
-                        params = OverlayWindowTypes.createCaptureParams(context),
+                        params = OverlayWindowTypes.createCaptureParams(
+                            context,
+                            "XG:corner-${anchor.name.lowercase()}-${strip.name.lowercase()}",
+                        ),
                     )
                 }
             }

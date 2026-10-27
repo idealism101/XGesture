@@ -77,7 +77,10 @@ object OverlayWindowTypes {
      */
     fun captureOverlayWindowType(context: Context): Int = overlayWindowType(context)
 
-    fun createCaptureParams(context: Context): WindowManager.LayoutParams {
+    fun createCaptureParams(
+        context: Context,
+        title: String? = null,
+    ): WindowManager.LayoutParams {
         return WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -88,6 +91,7 @@ object OverlayWindowTypes {
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT
         ).also {
+            title?.let { name -> it.title = name }
             ensureNoBrightnessOverride(it)
             it.flags = it.flags or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
             it.layoutInDisplayCutoutMode =
