@@ -8,6 +8,13 @@ data class SettingsBackupDocument(
     val exportedAtEpochMs: Long,
     val appVersionName: String,
     val preferences: List<SettingsPreferenceEntry>,
+    /**
+     * 这份备份**只包含**这些模块（`SettingsModule.id`）。空 = 全量备份（旧文件也是空）。
+     *
+     * 只用于提示与兼容：导入时一律以文件里实际存在的键为准，
+     * 不能仅凭这个字段就认定「某模块被备份过」。
+     */
+    val includedModules: List<String> = emptyList(),
     val otpRecordsJson: String? = null,
     val notificationHistoryJson: String? = null,
     val notificationFilterRulesJson: String? = null,

@@ -252,7 +252,7 @@ fun NavEntryBuilder.extensionHubNavEntries(ctx: MainNavContext) {
             onImport = viewModel::previewImport,
             importPreviewState = importPreviewState,
             onDismissPreview = viewModel::dismissPreview,
-            onConfirmImport = viewModel::confirmImport,
+            onConfirmImport = { uri, modules -> viewModel.confirmImport(uri, modules) },
             missingPermissionCount = missingCount,
             onOpenMissingPermissions = { ctx.navigate(AppNavKey.ExtensionMissingPermissions) },
             onOpenCloudBackup = { ctx.navigate(AppNavKey.ExtensionCloudBackup) },

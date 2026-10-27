@@ -6,6 +6,8 @@ data class SettingsBackupPreview(
     val appVersionName: String,
     val totalPreferencesCount: Int,
     val domains: Set<SettingsDomain>,
+    /** 备份里每个模块的内容概况，用于「选择要恢复的模块」。 */
+    val moduleSummaries: Map<SettingsModule, SettingsBackupModuleSummary> = emptyMap(),
     val hasOtpRecords: Boolean,
     val hasNotificationHistory: Boolean,
     val hasNotificationFilterRules: Boolean = false,
@@ -17,6 +19,21 @@ data class SettingsBackupPreview(
     val hasShareImageOcrHistoryDirectory: Boolean = false,
     val hasCloudLlmConfig: Boolean = false,
     val importDiff: SettingsBackupImportDiff = SettingsBackupImportDiff(emptyList(), emptyList()),
+)
+
+/**
+ * 一个模块在备份里的内容概况。
+ *
+ * 把「设置项」与「历史/文件」分开计数：前者是用户能感知的开关，后者是数据，
+ * 混成同一个数字会让「Shell 命令 · 3 项」看起来像三个开关。
+ */
+data class SettingsBackupModuleSummary(
+    /** 该模块的偏好键数量。 */
+    val settingsCount: Int = 0,
+    /** 是否带该模块的历史/记录分区（验证码记录、通知历史、Shell 输出历史等）。 */
+    val hasHistory: Boolean = false,
+    /** 是否带该模块的文件目录（图标、剪贴板历史、收纳等）。 */
+    val hasFiles: Boolean = false,
 )
 
 enum class SettingsDomain {

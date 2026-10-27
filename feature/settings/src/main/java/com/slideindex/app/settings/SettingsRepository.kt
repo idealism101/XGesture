@@ -137,15 +137,21 @@ class SettingsRepository @Inject constructor(
         appVersionName: String,
         sensitive: SensitiveBackupSections? = null,
         outputStream: java.io.OutputStream,
+        modules: Set<SettingsModule>? = null,
     ): Result<Unit> =
-        backupManager.exportToZip(appVersionName, sensitive, outputStream)
+        backupManager.exportToZip(appVersionName, sensitive, outputStream, modules)
 
     suspend fun importSettings(
         inputStream: java.io.InputStream,
         replaceExisting: Boolean = true,
+        modules: Set<SettingsModule>? = null,
     ): Result<SettingsBackupImportResult> =
-        backupManager.importFromZip(inputStream, replaceExisting)
-        
+        backupManager.importFromZip(inputStream, replaceExisting, modules)
+
+    /** 只把选中的模块恢复默认值；其它模块的数据原样保留。 */
+    suspend fun resetModules(modules: Set<SettingsModule>): Result<Int> =
+        backupManager.resetModules(modules)
+
     suspend fun previewImport(
         inputStream: java.io.InputStream,
     ): Result<SettingsBackupPreview> =

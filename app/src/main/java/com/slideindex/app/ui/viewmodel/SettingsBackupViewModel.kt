@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.slideindex.app.settings.SettingsBackupPreview
+import com.slideindex.app.settings.SettingsModule
 import com.slideindex.app.gesture.GestureActionPermissionAuditor
 
 /**
@@ -96,11 +97,15 @@ class SettingsBackupViewModel @Inject constructor(
         _importPreviewState.value = null
     }
 
-    fun confirmImport(uri: Uri) {
+    /**
+     * @param modules 只恢复这些模块（`null` = 全量替换，旧行为）。
+     *   选择性恢复不会碰未选模块的当前数据。
+     */
+    fun confirmImport(uri: Uri, modules: Set<SettingsModule>? = null) {
         viewModelScope.launch {
             runCatching {
                 appContext.contentResolver.openInputStream(uri)?.use { input ->
-                    settingsRepository.importSettings(input).getOrThrow()
+                    settingsRepository.importSettings(input, modules = modules).getOrThrow()
                 } ?: error("Unable to open input stream")
             }.fold(
                 onSuccess = { result ->

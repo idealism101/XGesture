@@ -27,10 +27,14 @@ internal object SettingsBackupCodec {
         preferences: Preferences,
         appVersionName: String,
         sensitive: SensitiveBackupSections? = null,
+        modules: Set<SettingsModule>? = null,
     ): String {
         val entries = preferences.asMap()
             .mapNotNull { (key, value) ->
                 if (key.name in excludedExportKeys) return@mapNotNull null
+                if (modules != null && SettingsModuleRegistry.moduleOf(key.name) !in modules) {
+                    return@mapNotNull null
+                }
                 encodeEntry(key.name, value)
             }
             .sortedBy { it.key }
@@ -39,6 +43,7 @@ internal object SettingsBackupCodec {
             exportedAtEpochMs = System.currentTimeMillis(),
             appVersionName = appVersionName,
             preferences = entries,
+            includedModules = modules?.map { it.id }?.sorted().orEmpty(),
             otpRecordsJson = sensitive?.otpRecordsJson,
             notificationHistoryJson = sensitive?.notificationHistoryJson,
             notificationFilterRulesJson = sensitive?.notificationFilterRulesJson,

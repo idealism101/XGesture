@@ -1,6 +1,7 @@
 package com.slideindex.app.settings
 
 import android.content.Context
+import com.slideindex.app.shell.ShellCommand
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -182,6 +183,35 @@ class SettingsBackupCodecTest {
         val restored = File(context.filesDir, "search_icons/legacy.png")
         assertTrue(restored.exists())
         assertEquals(3, restored.readBytes().size)
+    }
+
+    /**
+     * 选择性导入的回归网：只导入 Shell 模块，未选中的模块必须保持导入前的本地值。
+     * 这直接对应「清数据后只恢复健康模块，别把出 bug 的模块带回来」这条诉求。
+     */
+    @Test
+    fun importWithModules_onlyTouchesSelectedModules() = runBlocking {
+        repository.setShellCommands(listOf(ShellCommand(label = "backup", command = "echo backup")))
+        repository.setLeftEdgeEnabled(true)
+        awaitSettings { it.shellCommands.singleOrNull()?.label == "backup" && it.leftEdgeEnabled }
+
+        val outStream = ByteArrayOutputStream()
+        repository.exportSettings("1.2.0", null, outStream).getOrThrow()
+
+        repository.setShellCommands(listOf(ShellCommand(label = "local", command = "echo local")))
+        repository.setLeftEdgeEnabled(false)
+        awaitSettings { it.shellCommands.singleOrNull()?.label == "local" && !it.leftEdgeEnabled }
+
+        val result = repository.importSettings(
+            ByteArrayInputStream(outStream.toByteArray()),
+            modules = setOf(SettingsModule.SHELL),
+        ).getOrThrow()
+
+        assertEquals(1, result.preferencesImported)
+        val restored = awaitSettings { it.shellCommands.singleOrNull()?.label == "backup" }
+        assertEquals("echo backup", restored.shellCommands.single().command)
+        // 未选中的「边缘手势」模块保持本地值 false，不能被备份里的 true 覆盖。
+        assertFalse(restored.leftEdgeEnabled)
     }
 }
 
