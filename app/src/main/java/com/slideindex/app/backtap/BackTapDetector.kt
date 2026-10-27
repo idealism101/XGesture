@@ -207,7 +207,7 @@ class BackTapDetector(
         sensorHub.register(
             MotionSensorHub.Kind.ACCELEROMETER,
             this,
-            SensorManager.SENSOR_DELAY_FASTEST,
+            ACCEL_DELAY_US,
         ) { processAccelerometer(it) }
         if (sensorHub.hasProximity) {
             sensorHub.register(
@@ -663,6 +663,15 @@ class BackTapDetector(
         private const val FLAT_INCLINE_DEG = 25.0
         private const val SUSPEND_DEBOUNCE_MS = 60_000L
 
+        /**
+         * 敲击检测的加速度采样周期：5ms（200Hz）。
+         *
+         * 实测真敲脉冲 12–34ms，200Hz 每击仍有 2–7 个点、峰值误差 ≤2.5ms；
+         * 而低通截止只有 80Hz，500Hz（2ms）对它是过量采样，白烧 CPU 和传感器功耗。
+         * 注意：200Hz 下脉冲时长被量化成 5ms 一档，[MIN_PULSE_NS] 相应放宽。
+         */
+        private const val ACCEL_DELAY_US = 5_000
+
         // 滤波器截止频率
         private const val CUTOFF_HP_HZ = 5f
         private const val CUTOFF_LP_HZ = 80f
@@ -695,7 +704,9 @@ class BackTapDetector(
         private const val HARD_IMPACT_ENERGY = 20f
         /** 硬冲击后的配对抑制时长。 */
         private const val HARD_IMPACT_SUPPRESS_NS = 2_000_000_000L
-        private const val MIN_PULSE_NS = 8_000_000L
+        // 200Hz 采样下脉冲时长被量化成 5ms 一档，下限从 8ms 放宽到 10ms，
+        // 否则单点毛刺可能被凑成一个"合格脉冲"。
+        private const val MIN_PULSE_NS = 10_000_000L
         private const val MAX_PULSE_NS = 120_000_000L
         private const val LOCKOUT_NS = 100_000_000L
 
