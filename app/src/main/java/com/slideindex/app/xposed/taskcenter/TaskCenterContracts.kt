@@ -58,6 +58,19 @@ interface TaskCenterSurface {
     fun onExternalUp(x: Float, y: Float, cancelled: Boolean)
     fun onExternalCancel()
     fun playDismissal()
+
+    /** 按出场因果退场（承载层据此决定是否等待动画结束再撤窗口）。 */
+    fun playExit(exitReason: TaskPanelExit, velocity: Float)
+
+    /** 系统面板展开时暂停列表交互（退位但不销毁）。 */
+    fun setPaused(paused: Boolean)
+
+    /** 侧边返回手势跟手进度（0f = 未让位，1f = 完全让出）。 */
+    fun setBackYieldProgress(progress: Float, fromLeft: Boolean)
+
+    /** 跟手结束，取消偏移。 */
+    fun releaseBackYield()
+
     fun releaseResources()
     fun getHandler(): android.os.Handler?
 }

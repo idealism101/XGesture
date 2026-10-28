@@ -251,27 +251,96 @@ class TaskCenterListView(context: Context) : View(context), TaskCenterSurface {
         canvas.drawText(label, textLeft, r.top + rowHeightPx / 2f - dp(6f), p)
         val sub = Paint().apply { color = textSub; textSize = dp(11f); alpha = (alphaMul * 255).toInt().coerceIn(0, 255) }
         canvas.drawText(task.packageName, textLeft, r.top + rowHeightPx / 2f + dp(12f), sub)
-        // 锁定徽标
+        // 锁定徽标（矢量锁形，不用文字：本视图跑在 SystemUI 进程，模块自身 strings 不可用）
         if (lockedSet.contains(task.packageName)) {
-            val lockP = Paint().apply { color = accent; textSize = dp(12f); isFakeBoldText = true }
-            canvas.drawText("已锁", textLeft, r.top + dp(14f), lockP)
+            drawLockGlyph(canvas, textLeft + dp(4.5f), r.top + dp(9f), dp(11f), accent, closed = true)
         }
         // 动作按钮
         val btns = actionRects.getOrNull(i)
         if (btns != null) {
-            drawButton(canvas, btns[0], "分", accent)      // split
-            drawButton(canvas, btns[1], "窗", accent)      // freeform
-            drawButton(canvas, btns[2], if (lockedSet.contains(task.packageName)) "开" else "锁", accent) // lock
-            drawButton(canvas, btns[3], "×", Color.argb(200, 255, 90, 90)) // close
+            val isLocked = lockedSet.contains(task.packageName)
+            drawActionButton(canvas, btns[0]) { cx, cy -> drawSplitGlyph(canvas, cx, cy, accent) }   // split
+            drawActionButton(canvas, btns[1]) { cx, cy -> drawFreeformGlyph(canvas, cx, cy, accent) } // freeform
+            // 已锁 → 显示开锁（锁梁断开）；未锁 → 显示上锁（锁梁闭合）
+            drawActionButton(canvas, btns[2]) { cx, cy ->
+                drawLockGlyph(canvas, cx, cy, dp(15f), accent, closed = !isLocked)
+            }
+            drawActionButton(canvas, btns[3]) { cx, cy ->
+                drawCrossGlyph(canvas, cx, cy, Color.argb(200, 255, 90, 90))
+            } // close
         }
     }
 
-    private fun drawButton(canvas: Canvas, rect: RectF, label: String, color: Int) {
+    /** 动作按钮底板（圆角浅底），图标由调用方绘制。 */
+    private fun drawActionButton(canvas: Canvas, rect: RectF, glyph: (Float, Float) -> Unit) {
         drawRoundRect(canvas, rect, dp(10f), Color.argb(40, 255, 255, 255))
-        val p = Paint().apply { this.color = color; textSize = dp(15f); isFakeBoldText = true; textAlign = Paint.Align.CENTER }
-        val fm = p.fontMetrics
-        val ty = rect.centerY() - (fm.ascent + fm.descent) / 2f
-        canvas.drawText(label, rect.centerX(), ty, p)
+        glyph(rect.centerX(), rect.centerY())
+    }
+
+    /**
+     * 锁形：上方锁梁（半圆环）+ 下方锁体（圆角矩形）。
+     *
+     * [closed] = true 锁梁闭合（上锁动作）；false 锁梁右移断开（开锁动作）。
+     */
+    private fun drawLockGlyph(canvas: Canvas, cx: Float, cy: Float, height: Float, color: Int, closed: Boolean) {
+        val p = Paint().apply {
+            this.color = color
+            style = Paint.Style.STROKE
+            strokeWidth = dp(1.6f)
+            strokeCap = Paint.Cap.ROUND
+        }
+        val bodyH = height * 0.56f
+        val bodyTop = cy + height / 2f - bodyH
+        val bodyBottom = cy + height / 2f
+        val bodyHalfW = bodyH * 0.62f
+        canvas.drawRoundRect(RectF(cx - bodyHalfW, bodyTop, cx + bodyHalfW, bodyBottom), dp(2f), dp(2f), p)
+        val shackleR = bodyHalfW * 0.72f
+        // 未闭合时锁梁整体右移并抬高，与锁体断开 —— 视觉上就是"锁打开了"
+        val shackleCx = if (closed) cx else cx + shackleR * 0.75f
+        val shackleTop = if (closed) bodyTop - shackleR * 2f else bodyTop - shackleR * 2.4f
+        canvas.drawArc(RectF(shackleCx - shackleR, shackleTop, shackleCx + shackleR, bodyTop), 180f, 180f, false, p)
+    }
+
+    /** 分屏：两条并排竖条。 */
+    private fun drawSplitGlyph(canvas: Canvas, cx: Float, cy: Float, color: Int) {
+        val p = Paint().apply { this.color = color; style = Paint.Style.FILL }
+        val barW = dp(2.6f)
+        val gap = dp(2.4f)
+        val h = dp(13f)
+        val top = cy - h / 2f
+        canvas.drawRoundRect(RectF(cx - gap / 2f - barW, top, cx - gap / 2f, top + h), dp(1.3f), dp(1.3f), p)
+        canvas.drawRoundRect(RectF(cx + gap / 2f, top, cx + gap / 2f + barW, top + h), dp(1.3f), dp(1.3f), p)
+    }
+
+    /** 小窗：圆角窗口框 + 左上角标题条实心块（浮在整屏之上的一扇窗）。 */
+    private fun drawFreeformGlyph(canvas: Canvas, cx: Float, cy: Float, color: Int) {
+        val p = Paint().apply {
+            this.color = color
+            style = Paint.Style.STROKE
+            strokeWidth = dp(1.6f)
+        }
+        val w = dp(13f)
+        val h = dp(11f)
+        val rect = RectF(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f)
+        canvas.drawRoundRect(rect, dp(2f), dp(2f), p)
+        val bar = Paint().apply { this.color = color; style = Paint.Style.FILL }
+        canvas.drawRoundRect(
+            RectF(rect.left + dp(2.5f), rect.top + dp(2.5f), rect.left + dp(7f), rect.top + dp(4.2f)),
+            dp(1f), dp(1f), bar,
+        )
+    }
+
+    /** 关闭：两笔交叉。 */
+    private fun drawCrossGlyph(canvas: Canvas, cx: Float, cy: Float, color: Int) {
+        val p = Paint().apply {
+            this.color = color
+            style = Paint.Style.STROKE
+            strokeWidth = dp(1.6f)
+            strokeCap = Paint.Cap.ROUND
+        }
+        val arm = dp(5f)
+        canvas.drawLine(cx - arm, cy - arm, cx + arm, cy + arm, p)
+        canvas.drawLine(cx + arm, cy - arm, cx - arm, cy + arm, p)
     }
 
     private fun drawRoundRect(canvas: Canvas, rect: RectF, radius: Float, color: Int) {

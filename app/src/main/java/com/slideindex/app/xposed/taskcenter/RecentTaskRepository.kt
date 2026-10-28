@@ -9,13 +9,14 @@ import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.ColorSpace
-import android.graphics.HardwareBuffer
+import android.hardware.HardwareBuffer
 import android.net.Uri
 import android.os.Bundle
 import android.os.UserHandle
 import android.provider.Settings
 import android.text.TextUtils
 import java.lang.reflect.Method
+import kotlin.math.roundToInt
 
 /**
  * 最近任务数据层。仅依赖系统 API（ActivityTaskManager / PackageManager / LauncherApps），

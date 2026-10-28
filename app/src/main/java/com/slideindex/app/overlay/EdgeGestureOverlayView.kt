@@ -124,7 +124,6 @@ class EdgeGestureOverlayView(
     private val overlayHosts = EdgeGestureOverlayHosts(
         view = this,
         side = side,
-        appRepository = appRepository,
         zoneLayout = zoneLayout,
         indexSession = indexSession,
         panelGridSession = panelGridSession,
