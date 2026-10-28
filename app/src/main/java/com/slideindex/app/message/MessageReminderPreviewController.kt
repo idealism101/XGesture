@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.util.Log
 import androidx.core.graphics.createBitmap
 import com.slideindex.app.R
 import com.slideindex.app.message.MessageThemeCatalog
@@ -15,6 +16,7 @@ import com.slideindex.app.overlay.MessageOverlayHost
 import com.slideindex.app.overlay.SideBubbleOverlayWindow
 
 object MessageReminderPreviewController {
+    private const val TAG = "MessagePreview"
     const val PREVIEW_KEY = "__message_reminder_preview__"
 
     private var activeStyle: MessageStyle? = null
@@ -23,9 +25,16 @@ object MessageReminderPreviewController {
     fun isPreviewActive(style: MessageStyle): Boolean = activeStyle == style
 
     fun start(context: Context, style: MessageStyle, settings: MessageSettings) {
-        if (!MessageOverlayHost.canShow(context)) return
+        if (!MessageOverlayHost.canShow(context)) {
+            Log.d(TAG, "preview skipped: overlay not allowed, style=$style")
+            return
+        }
         val previewSettings = previewSettingsFor(style, settings)
-        val plan = buildPreviewPlan(context, style, previewSettings) ?: return
+        val plan = buildPreviewPlan(context, style, previewSettings) ?: run {
+            Log.d(TAG, "preview skipped: no plan, style=$style")
+            return
+        }
+        Log.d(TAG, "preview start style=$style")
         activeStyle = style
         placementBaseline = settings
         val noOpAction: (MessageAction) -> Unit = {}

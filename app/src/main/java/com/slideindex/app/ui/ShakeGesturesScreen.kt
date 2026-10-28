@@ -44,10 +44,12 @@ import com.slideindex.app.gesture.GestureAction
 import com.slideindex.app.shake.ShakeGestureSettings
 import com.slideindex.app.shake.ShakeGestureType
 import com.slideindex.app.shake.ShakeSensitivityScale
+import com.slideindex.app.shake.ShakeWorkMode
 import com.slideindex.app.ui.animationstyle.AnimationStyleColorPickerDialog
 import com.slideindex.app.ui.animationstyle.AnimationStyleColorRow
 import com.slideindex.app.ui.miuix.MiuixHubScaffold
 import com.slideindex.app.ui.miuix.groupedCardItems
+import com.slideindex.app.ui.settings.components.SettingRadioRow
 import com.slideindex.app.ui.settings.components.SettingsCardScope
 import com.slideindex.app.ui.settings.components.SettingsCardScopeContent
 import com.slideindex.app.ui.settings.components.settingsCardItem
@@ -63,7 +65,7 @@ fun ShakeGesturesScreen(
     bottomContentPadding: Dp = 0.dp,
     bottomNavReselectCount: Int = 0,
     onEnabledChange: (Boolean) -> Unit,
-    onLockScreenShakeEnabledChange: (Boolean) -> Unit,
+    onWorkModeChange: (ShakeWorkMode) -> Unit,
     onIndependentAppShakeEnabledChange: (Boolean) -> Unit,
     onGlobalSensitivityChange: (Float) -> Unit,
     onIndependentSensitivityEnabledChange: (Boolean) -> Unit,
@@ -99,9 +101,11 @@ fun ShakeGesturesScreen(
 
     val basicSectionTitle = stringResource(R.string.shake_gestures_section_basic)
     val serviceSectionTitle = stringResource(R.string.settings_section_general)
-    val faceDownSectionTitle = stringResource(R.string.face_down_gestures_title)
-    val backTapSectionTitle = stringResource(R.string.extension_back_tap_title)
-    val advancedSectionTitle = stringResource(R.string.shake_gestures_section_advanced)
+    val workModeSectionTitle = stringResource(R.string.shake_work_mode_section)
+    val workModeBatteryHint = stringResource(R.string.shake_work_mode_battery_hint)
+    val actionScopeSectionTitle = stringResource(R.string.shake_gestures_section_action_scope)
+    val otherGesturesSectionTitle = stringResource(R.string.shake_gestures_section_other)
+    val otherGesturesHint = stringResource(R.string.shake_gestures_other_hint)
     val sensitivitySectionTitle = stringResource(R.string.shake_gestures_section_sensitivity)
     val sensitivityHint = stringResource(R.string.shake_gestures_sensitivity_hint)
     val feedbackSectionTitle = stringResource(R.string.shake_gestures_section_feedback)
@@ -151,53 +155,67 @@ fun ShakeGesturesScreen(
                 }
             },
         )
-        settingsLazySmallTitle(key = "shake-face-down", title = faceDownSectionTitle)
+        settingsLazySmallTitle(key = "shake-work-mode", title = workModeSectionTitle)
         groupedCardItems(
-            keyPrefix = "shake-face-down",
-            items = listOf(
-                settingsCardScopeItem("face-down-settings") {
-                    SettingNavigationRow(
-                        icon = { label ->
-                            ColoredSettingIcon(
-                                icon = Icons.Default.PhoneAndroid,
-                                background = Color(0xFF78909C),
-                                contentDescription = label,
-                            )
-                        },
-                        title = stringResource(R.string.face_down_gestures_title),
-                        subtitle = stringResource(R.string.face_down_gestures_subtitle),
-                        onClick = onOpenFaceDownSettings,
-                    )
-                },
-            ),
+            keyPrefix = "shake-work-mode",
+            selectableGroup = true,
+            items = buildList {
+                add(
+                    settingsCardScopeItem("shake-work-mode-always") {
+                        SettingRadioRow(
+                            title = stringResource(R.string.shake_work_mode_always),
+                            subtitle = stringResource(R.string.shake_work_mode_always_desc),
+                            selected = settings.workMode == ShakeWorkMode.ALWAYS,
+                            enabled = settings.enabled,
+                            onClick = { onWorkModeChange(ShakeWorkMode.ALWAYS) },
+                        )
+                    },
+                )
+                add(
+                    settingsCardScopeItem("shake-work-mode-unlocked") {
+                        SettingRadioRow(
+                            title = stringResource(R.string.shake_work_mode_unlocked),
+                            subtitle = stringResource(R.string.shake_work_mode_unlocked_desc),
+                            selected = settings.workMode == ShakeWorkMode.UNLOCKED,
+                            enabled = settings.enabled,
+                            onClick = { onWorkModeChange(ShakeWorkMode.UNLOCKED) },
+                        )
+                    },
+                )
+                add(
+                    settingsCardScopeItem("shake-work-mode-locked-screen-on") {
+                        SettingRadioRow(
+                            title = stringResource(R.string.shake_work_mode_locked_screen_on),
+                            subtitle = stringResource(R.string.shake_work_mode_locked_screen_on_desc),
+                            selected = settings.workMode == ShakeWorkMode.LOCKED_SCREEN_ON,
+                            enabled = settings.enabled,
+                            onClick = { onWorkModeChange(ShakeWorkMode.LOCKED_SCREEN_ON) },
+                        )
+                    },
+                )
+                add(
+                    settingsCardScopeItem("shake-work-mode-screen-off") {
+                        SettingRadioRow(
+                            title = stringResource(R.string.shake_work_mode_screen_off),
+                            subtitle = stringResource(R.string.shake_work_mode_screen_off_desc),
+                            selected = settings.workMode == ShakeWorkMode.SCREEN_OFF,
+                            enabled = settings.enabled,
+                            onClick = { onWorkModeChange(ShakeWorkMode.SCREEN_OFF) },
+                        )
+                    },
+                )
+            },
         )
-        settingsLazySmallTitle(key = "shake-back-tap", title = backTapSectionTitle)
+        if (settings.workMode.includesScreenOff) {
+            settingsLazyHint(key = "shake-work-mode-battery-hint", text = workModeBatteryHint)
+        }
+        settingsLazySmallTitle(key = "shake-action-scope", title = actionScopeSectionTitle)
         groupedCardItems(
-            keyPrefix = "shake-back-tap",
-            items = listOf(
-                settingsCardScopeItem("back-tap-settings") {
-                    SettingNavigationRow(
-                        icon = { label ->
-                            ColoredSettingIcon(
-                                icon = Icons.Default.TouchApp,
-                                background = Color(0xFF26A69A),
-                                contentDescription = label,
-                            )
-                        },
-                        title = stringResource(R.string.extension_back_tap_title),
-                        subtitle = stringResource(R.string.extension_back_tap_subtitle),
-                        onClick = onOpenBackTapSettings,
-                    )
-                },
-            ),
-        )
-        settingsLazySmallTitle(key = "shake-advanced", title = advancedSectionTitle)
-        groupedCardItems(
-            keyPrefix = "shake-advanced",
+            keyPrefix = "shake-action-scope",
             items = buildList {
                 add(
                     settingsCardScopeItem("shake-lock-screen") {
-                        SettingSwitchNavigationRow(
+                        SettingNavigationRow(
                             title = stringResource(R.string.shake_gestures_lock_screen),
                             subtitle = stringResource(R.string.shake_gestures_lock_screen_desc),
                             icon = { label ->
@@ -207,10 +225,8 @@ fun ShakeGesturesScreen(
                                     contentDescription = label,
                                 )
                             },
-                            checked = settings.lockScreenShakeEnabled,
                             enabled = settings.enabled,
-                            onCheckedChange = onLockScreenShakeEnabledChange,
-                            onNavigate = onOpenLockScreenShakeSettings,
+                            onClick = onOpenLockScreenShakeSettings,
                         )
                     },
                 )
@@ -367,6 +383,41 @@ fun ShakeGesturesScreen(
                     },
                 )
             },
+        )
+        settingsLazySmallTitle(key = "shake-other-gestures", title = otherGesturesSectionTitle)
+        settingsLazyHint(key = "shake-other-gestures-hint", text = otherGesturesHint)
+        groupedCardItems(
+            keyPrefix = "shake-other-gestures",
+            items = listOf(
+                settingsCardScopeItem("face-down-settings") {
+                    SettingNavigationRow(
+                        icon = { label ->
+                            ColoredSettingIcon(
+                                icon = Icons.Default.PhoneAndroid,
+                                background = Color(0xFF78909C),
+                                contentDescription = label,
+                            )
+                        },
+                        title = stringResource(R.string.face_down_gestures_title),
+                        subtitle = stringResource(R.string.face_down_gestures_subtitle),
+                        onClick = onOpenFaceDownSettings,
+                    )
+                },
+                settingsCardScopeItem("back-tap-settings") {
+                    SettingNavigationRow(
+                        icon = { label ->
+                            ColoredSettingIcon(
+                                icon = Icons.Default.TouchApp,
+                                background = Color(0xFF26A69A),
+                                contentDescription = label,
+                            )
+                        },
+                        title = stringResource(R.string.extension_back_tap_title),
+                        subtitle = stringResource(R.string.extension_back_tap_subtitle),
+                        onClick = onOpenBackTapSettings,
+                    )
+                },
+            ),
         )
     }
 }

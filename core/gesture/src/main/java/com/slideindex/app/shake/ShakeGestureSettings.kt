@@ -19,11 +19,34 @@ enum class ShakeGestureType(val id: Int) {
     }
 }
 
+/** 晃动在哪种锁屏/屏幕状态下生效。 */
+enum class ShakeWorkMode(val storageId: Int) {
+    UNLOCKED(0),
+    SCREEN_OFF(1),
+    ALWAYS(2),
+    LOCKED_SCREEN_ON(3),
+    ;
+
+    fun allows(screenOn: Boolean, keyguardLocked: Boolean): Boolean = when (this) {
+        UNLOCKED -> screenOn && !keyguardLocked
+        LOCKED_SCREEN_ON -> screenOn && keyguardLocked
+        SCREEN_OFF -> !screenOn
+        ALWAYS -> true
+    }
+
+    val includesScreenOff: Boolean get() = this == SCREEN_OFF || this == ALWAYS
+
+    companion object {
+        fun fromId(id: Int): ShakeWorkMode = entries.firstOrNull { it.storageId == id } ?: UNLOCKED
+    }
+}
+
 data class ShakeGestureSettings(
     val enabled: Boolean = false,
+    val workMode: ShakeWorkMode = ShakeWorkMode.UNLOCKED,
     val basicActions: Map<ShakeGestureType, GestureAction> = defaultBasicActions(),
-    val lockScreenShakeEnabled: Boolean = false,
-    val lockScreenActions: Map<ShakeGestureType, GestureAction> = defaultBasicActions(),
+    /** 锁屏或熄屏时生效；未设置的项视为“无”，不回退到基础动作。 */
+    val lockScreenActions: Map<ShakeGestureType, GestureAction> = emptyMap(),
     val independentAppShakeEnabled: Boolean = false,
     val perAppActions: Map<String, Map<ShakeGestureType, GestureAction>> = emptyMap(),
     val globalSensitivity: Float = ShakeSensitivityScale.DEFAULT_UI,
@@ -81,10 +104,12 @@ object ShakeGestureCodec {
     private fun sanitizeAction(action: GestureAction): GestureAction =
         action.sanitizeForSlotPicker(SlotPickerKind.OverlayTap)
 
-    fun decodeAllActions(raw: Set<String>): Map<ShakeGestureType, GestureAction> {
-        val decoded = raw.mapNotNull { decodeAction(it) }.toMap()
-        return ShakeGestureSettings.defaultBasicActions() + decoded
-    }
+    /** 严格解析：不在 [raw] 里的方向保持缺失（视为“无”），不补基础动作。 */
+    fun decodeActions(raw: Set<String>): Map<ShakeGestureType, GestureAction> =
+        raw.mapNotNull { decodeAction(it) }.toMap()
+
+    fun decodeAllActions(raw: Set<String>): Map<ShakeGestureType, GestureAction> =
+        ShakeGestureSettings.defaultBasicActions() + decodeActions(raw)
 
     fun encodePerAppActions(perApp: Map<String, Map<ShakeGestureType, GestureAction>>): Set<String> =
         perApp.map { (packageName, actions) ->

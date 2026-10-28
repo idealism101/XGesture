@@ -81,8 +81,8 @@ internal fun MainTabPagerHost(
         pageCount = { MainBottomNavDestination.entries.size },
     )
     val mainTabPagerState = rememberMainTabPagerState(pagerState)
-    // 横滑走 pager 原生手势：interactionSource 收不到拖动事件，所以自行跟踪“用户正在横滑”
-    // 用于底栏 1:1 跟随。
+    // 横滑走 pager 原生手势：interactionSource 收不到拖动事件，所以自行跟踪“用户正在横滑”。
+    // 用于在横滑未落位时挡住 [currentTab] 变化触发的程序化翻页，避免被打断。
     var isPagerDragTracking by remember(pagerState) { mutableStateOf(false) }
     // 捕获层先铺一层不透明底色（与外层 Scaffold 的 containerColor 一致）。
     // 页面背景由各页自己的 Scaffold 画，会跟着 overscroll 拉伸一起被拉走；被拉走后
@@ -110,7 +110,7 @@ internal fun MainTabPagerHost(
                 }
         }
         launch {
-            // 原生横滑与落位共用一个 scroll 突变：突变期间底栏跟手，结束即收回。
+            // 原生横滑与落位共用一个 scroll 突变：突变期间标记为“正在横滑”，结束即收回。
             snapshotFlow { pagerState.isScrollInProgress }
                 .collect { inProgress ->
                     isPagerDragTracking = inProgress
@@ -158,8 +158,6 @@ internal fun MainTabPagerHost(
                         BottomNavStyle.LIQUID_GLASS -> MiuixFloatingBottomNavBar(
                             backdrop = liquidGlassBackdrop,
                             targetTabIndex = mainTabPagerState.selectedPage,
-                            progress = { pagerState.currentPage + pagerState.currentPageOffsetFraction },
-                            isTracking = { isPagerDragTracking },
                             blurRadiusDp = bottomNavBlurRadiusDp,
                             glassEnabled = bottomNavUsesHaze,
                             showLabel = showBottomNavLabels,

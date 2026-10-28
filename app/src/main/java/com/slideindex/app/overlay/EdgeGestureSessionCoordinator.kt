@@ -274,6 +274,9 @@ internal class EdgeGestureSessionCoordinator(
                     item,
                     settings,
                     longPressArmed = longPressArmed,
+                    // 圆环槽位绑「快速启动器」这类边缘托管面板时，面板要贴圆环这一侧、按触发高度落位；
+                    // 不传锚点会退化成屏幕正中（见 ActionExecutorOverlayPanels.showEdgeHostedPanel）。
+                    anchorRawY = rawY,
                     panelSide = gestureSession.sessionSide,
                 )
             },

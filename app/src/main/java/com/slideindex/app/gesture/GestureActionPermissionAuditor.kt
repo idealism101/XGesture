@@ -55,9 +55,7 @@ object GestureActionPermissionAuditor {
         val shake = settings.shakeGestureSettings
         if (shake.enabled) {
             shake.basicActions.values.forEach(::add)
-            if (shake.lockScreenShakeEnabled) {
-                shake.lockScreenActions.values.forEach(::add)
-            }
+            shake.lockScreenActions.values.forEach(::add)
             if (shake.independentAppShakeEnabled) {
                 shake.perAppActions.values.forEach { perApp ->
                     perApp.values.forEach(::add)

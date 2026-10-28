@@ -42,7 +42,7 @@ fun NavEntryBuilder.shakeNavEntries(ctx: MainNavContext) {
             bottomContentPadding = ctx.rootBottomContentPadding,
             bottomNavReselectCount = ctx.bottomNavReselectCount,
             onEnabledChange = { enabled -> viewModel.setEnabled(enabled) },
-            onLockScreenShakeEnabledChange = { enabled -> viewModel.setLockScreenShakeEnabled(enabled) },
+            onWorkModeChange = viewModel::setWorkMode,
             onIndependentAppShakeEnabledChange = { enabled ->
                 viewModel.setIndependentAppShakeEnabled(enabled)
             },
@@ -92,8 +92,7 @@ fun NavEntryBuilder.shakeNavEntries(ctx: MainNavContext) {
             ShakeActionPickTarget.LOCK_SCREEN ->
                 shakeSettings.shakeGestureSettings.lockScreenActions[gestureType] ?: GestureAction.None
             ShakeActionPickTarget.PER_APP ->
-                shakeSettings.shakeGestureSettings.perAppActions[key.packageName]
-                    ?.get(gestureType) ?: GestureAction.None
+                shakeSettings.shakeGestureSettings.effectivePerAppAction(key.packageName, gestureType)
         }
         GestureActionPickerScreen(
             trigger = trigger,
@@ -171,8 +170,7 @@ fun NavEntryBuilder.shakeNavEntries(ctx: MainNavContext) {
             ShakeActionPickTarget.LOCK_SCREEN ->
                 shakeSettings.shakeGestureSettings.lockScreenActions[gestureType] ?: GestureAction.None
             ShakeActionPickTarget.PER_APP ->
-                shakeSettings.shakeGestureSettings.perAppActions[key.packageName]
-                    ?.get(gestureType) ?: GestureAction.None
+                shakeSettings.shakeGestureSettings.effectivePerAppAction(key.packageName, gestureType)
         }
         MyShortcutsFolderScreen(
             activityShortcuts = appSettings.activityShortcuts,
@@ -207,8 +205,7 @@ fun NavEntryBuilder.shakeNavEntries(ctx: MainNavContext) {
             ShakeActionPickTarget.LOCK_SCREEN ->
                 shakeSettings.shakeGestureSettings.lockScreenActions[gestureType] ?: GestureAction.None
             ShakeActionPickTarget.PER_APP ->
-                shakeSettings.shakeGestureSettings.perAppActions[key.packageName]
-                    ?.get(gestureType) ?: GestureAction.None
+                shakeSettings.shakeGestureSettings.effectivePerAppAction(key.packageName, gestureType)
         }
         PresetShortcutsFolderScreen(
             onBack = { ctx.navigateBackTo(returnKey) },
@@ -314,7 +311,8 @@ fun NavEntryBuilder.shakeNavEntries(ctx: MainNavContext) {
         val shakeSettings by viewModel.shakeUiSettings.collectAsStateWithLifecycle()
         ShakeActionSetSettingsScreen(
             title = stringResource(R.string.shake_gestures_lock_screen),
-            subtitle = stringResource(R.string.shake_gestures_lock_screen_settings_desc),
+            subtitle = stringResource(R.string.shake_gestures_lock_screen_settings_desc) + "\n" +
+                stringResource(R.string.shake_work_mode_actions_hint),
             actions = shakeSettings.shakeGestureSettings.lockScreenActions,
             onBack = { ctx.navigateBackTo(AppNavKey.ShakeGestures) },
             onOpenActionPick = { type ->
@@ -410,8 +408,7 @@ fun NavEntryBuilder.shakeNavEntries(ctx: MainNavContext) {
                 appLabel,
             ),
             subtitle = stringResource(R.string.shake_gestures_independent_app_desc),
-            actions = shakeSettings.shakeGestureSettings.perAppActions[packageName]
-                ?: ShakeGestureSettings.defaultBasicActions(),
+            actions = shakeSettings.shakeGestureSettings.effectivePerAppActions(packageName),
             onBack = { ctx.navigateBackTo(AppNavKey.ShakeIndependentAppSettings) },
             onOpenActionPick = { type ->
                 ctx.navigate(
@@ -615,5 +612,24 @@ private fun applyShakePickedAction(
         ShakeActionPickTarget.FACE_DOWN -> viewModel.setFaceDownAction(action)
         ShakeActionPickTarget.LOCK_SCREEN -> viewModel.setLockScreenShakeAction(gestureType, action)
         ShakeActionPickTarget.PER_APP -> viewModel.setPerAppShakeAction(packageName, gestureType, action)
+    }
+}
+
+/** 独立应用页展示“实际生效”的动作：显式覆盖优先，未覆盖的继承基础动作。 */
+private fun ShakeGestureSettings.effectivePerAppAction(
+    packageName: String,
+    type: ShakeGestureType,
+): GestureAction {
+    val perApp = perAppActions[packageName]
+    if (perApp != null && perApp.containsKey(type)) return perApp.getValue(type)
+    return actionFor(type)
+}
+
+private fun ShakeGestureSettings.effectivePerAppActions(
+    packageName: String,
+): Map<ShakeGestureType, GestureAction> {
+    val overrides = perAppActions[packageName].orEmpty()
+    return ShakeGestureType.entries.associateWith { type ->
+        overrides[type] ?: actionFor(type)
     }
 }

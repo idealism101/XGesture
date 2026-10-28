@@ -19,6 +19,7 @@ import com.slideindex.app.settings.ShakeUiSettings
 import com.slideindex.app.settings.ThemeSettings
 import com.slideindex.app.message.MessageSettings
 import com.slideindex.app.shake.ShakeGestureType
+import com.slideindex.app.shake.ShakeWorkMode
 import com.slideindex.app.ui.feedback.UserMessageBus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -158,12 +159,12 @@ class ShakeHubViewModel @Inject constructor(
         settingsRepository.setShakeGesturesEnabled(enabled)
     }
 
-    fun setBasicAction(type: ShakeGestureType, action: GestureAction) = launchSettingsWrite {
-        settingsRepository.setShakeGestureAction(type, action)
+    fun setWorkMode(mode: ShakeWorkMode) = launchSettingsWrite {
+        settingsRepository.setShakeWorkMode(mode)
     }
 
-    fun setLockScreenShakeEnabled(enabled: Boolean) = launchSettingsWrite {
-        settingsRepository.setLockScreenShakeEnabled(enabled)
+    fun setBasicAction(type: ShakeGestureType, action: GestureAction) = launchSettingsWrite {
+        settingsRepository.setShakeGestureAction(type, action)
     }
 
     fun setIndependentAppShakeEnabled(enabled: Boolean) = launchSettingsWrite {

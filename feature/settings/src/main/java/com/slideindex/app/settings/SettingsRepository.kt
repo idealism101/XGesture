@@ -15,6 +15,7 @@ import com.slideindex.app.message.MessageAppFilterRule
 import com.slideindex.app.message.MessageSettings
 import com.slideindex.app.overlay.PanelSide
 import com.slideindex.app.shake.ShakeGestureType
+import com.slideindex.app.shake.ShakeWorkMode
 import com.slideindex.app.shell.ShellCommand
 import com.slideindex.app.util.PredictiveBackStartupStore
 import com.slideindex.app.util.ServiceEnabledStore
@@ -1011,6 +1012,7 @@ class SettingsRepository @Inject constructor(
     suspend fun setOtpBlockedPackages(packages: Set<String>) = otp.setOtpBlockedPackages(packages)
 
     suspend fun setShakeGesturesEnabled(enabled: Boolean) = shake.setShakeGesturesEnabled(enabled)
+    suspend fun setShakeWorkMode(mode: ShakeWorkMode) = shake.setShakeWorkMode(mode)
     suspend fun setShakeGestureAction(type: ShakeGestureType, action: GestureAction) = shake.setShakeGestureAction(type, action)
     suspend fun setLockScreenShakeAction(type: ShakeGestureType, action: GestureAction) = shake.setLockScreenShakeAction(type, action)
     suspend fun setPerAppShakeAction(packageName: String, type: ShakeGestureType, action: GestureAction) =
@@ -1019,7 +1021,6 @@ class SettingsRepository @Inject constructor(
     suspend fun removePerAppShakeConfig(packageName: String) = shake.removePerAppShakeConfig(packageName)
     suspend fun setShakeDirectionSensitivity(type: ShakeGestureType, value: Float) =
         shake.setShakeDirectionSensitivity(type, value)
-    suspend fun setLockScreenShakeEnabled(enabled: Boolean) = shake.setLockScreenShakeEnabled(enabled)
     suspend fun setIndependentAppShakeEnabled(enabled: Boolean) = shake.setIndependentAppShakeEnabled(enabled)
     suspend fun setShakeGlobalSensitivity(value: Float) = shake.setShakeGlobalSensitivity(value)
     suspend fun setShakeIndependentSensitivityEnabled(enabled: Boolean) = shake.setShakeIndependentSensitivityEnabled(enabled)

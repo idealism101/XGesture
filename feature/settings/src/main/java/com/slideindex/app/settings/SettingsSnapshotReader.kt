@@ -40,6 +40,7 @@ import com.slideindex.app.shake.FaceDownGestureSettings
 import com.slideindex.app.shake.ShakeGestureCodec
 import com.slideindex.app.shake.ShakeSensitivityScale
 import com.slideindex.app.shake.ShakeGestureSettings
+import com.slideindex.app.shake.ShakeWorkMode
 import com.slideindex.app.translate.TranslateTargetLanguages
 import com.slideindex.app.backtap.BackTapMode
 import com.slideindex.app.backtap.BackTapSettings
@@ -830,11 +831,29 @@ internal object SettingsSnapshotReader {
         } else {
             emptyMap()
         }
+        val hasWorkModeKey = prefs[SettingsPreferenceKeys.SHAKE_WORK_MODE] != null
+        // 新模型：锁屏动作表里没写的方向就是“无”，不回退；旧模型按原总开关决定是否生效。
+        val lockScreenActions = when {
+            hasWorkModeKey -> ShakeGestureCodec.decodeActions(
+                prefs[SettingsPreferenceKeys.SHAKE_LOCK_SCREEN_ACTIONS] ?: emptySet(),
+            )
+            prefs[SettingsPreferenceKeys.LOCK_SCREEN_SHAKE_ENABLED] == true ->
+                ShakeGestureCodec.decodeAllActions(
+                    prefs[SettingsPreferenceKeys.SHAKE_LOCK_SCREEN_ACTIONS] ?: emptySet(),
+                )
+            else -> emptyMap()
+        }
         return ShakeGestureSettings(
             enabled = prefs[SettingsPreferenceKeys.SHAKE_GESTURES_ENABLED] ?: false,
+            workMode = ShakeWorkMode.fromId(
+                intPreference(
+                    prefs,
+                    SettingsPreferenceKeys.SHAKE_WORK_MODE,
+                    ShakeWorkMode.UNLOCKED.storageId,
+                ),
+            ),
             basicActions = ShakeGestureCodec.decodeAllActions(prefs[SettingsPreferenceKeys.SHAKE_GESTURE_ACTIONS] ?: emptySet()),
-            lockScreenShakeEnabled = prefs[SettingsPreferenceKeys.LOCK_SCREEN_SHAKE_ENABLED] ?: false,
-            lockScreenActions = ShakeGestureCodec.decodeAllActions(prefs[SettingsPreferenceKeys.SHAKE_LOCK_SCREEN_ACTIONS] ?: emptySet()),
+            lockScreenActions = lockScreenActions,
             independentAppShakeEnabled = prefs[SettingsPreferenceKeys.INDEPENDENT_APP_SHAKE_ENABLED] ?: false,
             perAppActions = ShakeGestureCodec.decodePerAppActions(prefs[SettingsPreferenceKeys.SHAKE_PER_APP_ACTIONS] ?: emptySet()),
             globalSensitivity = readShakeSensitivityUi(

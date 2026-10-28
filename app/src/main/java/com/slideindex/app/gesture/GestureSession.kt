@@ -485,7 +485,10 @@ class GestureSession(
                 if (sessionContinuousPick.ringLauncherActive()) {
                     sessionContinuousPick.clearRingLauncher()
                     callbacks.onRingLauncherContinuousRelease(rawX, rawY)
-                    endSession()
+                    // 圆环槽位可能绑的是「快速启动器 / 任务切换器 / 应用索引」这类边缘托管面板：
+                    // 松手确认时它已经在 openDiscretePanel() 里开好了，这里再 endSession() 会把
+                    // 刚开的面板和画布一起收掉（表现为「松手后什么都没弹出」）。与指尖圆环同一规则。
+                    finishContinuousPickRelease()
                     return
                 }
 
@@ -512,14 +515,7 @@ class GestureSession(
                 if (sessionContinuousPick.fingertipRingActive()) {
                     sessionContinuousPick.clearFingertipRing()
                     callbacks.onFingertipRingContinuousRelease(rawX, rawY)
-                    when (sessionPanelMode) {
-                        OverlayPanelMode.QUICK_LAUNCHER,
-                        OverlayPanelMode.TASK_SWITCHER,
-                        OverlayPanelMode.SHELL_COMMANDS,
-                        -> finishLeaveOpenFingerTracking()
-                        OverlayPanelMode.INDEX -> Unit
-                        else -> endSession()
-                    }
+                    finishContinuousPickRelease()
                     return
                 }
 
@@ -742,6 +738,20 @@ class GestureSession(
         if (!active && sessionPanelMode == OverlayPanelMode.NONE && sessionAdjustMode == null) return
         EdgeDiag.log("reset", "endSession panel=$sessionPanelMode active=$active")
         forceReset(notifySessionEnd = true)
+    }
+
+    /**
+     * 「持续触发」松手后的统一收尾（圆环 / 指尖圆环共用）。
+     *
+     * 松手确认可能已经在 [openDiscretePanel] 里开出了新的 leave-open 面板：这种情况下只能结束
+     * 手指跟踪、**不能** [endSession]，否则刚开的面板会随 `forceReset` 一起消失。
+     */
+    private fun finishContinuousPickRelease() {
+        when (continuousReleaseHandoff(sessionPanelMode)) {
+            ContinuousReleaseHandoff.END_SESSION -> endSession()
+            ContinuousReleaseHandoff.KEEP_FINGER_TRACKING -> finishLeaveOpenFingerTracking()
+            ContinuousReleaseHandoff.KEEP_INDEX -> Unit
+        }
     }
 
     fun forceReset(notifySessionEnd: Boolean = true) {

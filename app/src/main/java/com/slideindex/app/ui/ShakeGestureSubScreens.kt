@@ -44,6 +44,7 @@ fun ShakeActionSetSettingsScreen(
 ) {
     SettingsScreenScaffold(
         title = title,
+        pageHint = subtitle,
         onBack = onBack,
     ) {
         groupedCardItems(

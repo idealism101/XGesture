@@ -46,7 +46,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -81,7 +80,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.collectLatest
 import com.slideindex.app.ui.miuix.bottombar.animation.DampedDragAnimation
 import com.slideindex.app.ui.miuix.bottombar.animation.InteractiveHighlight
 import top.yukonga.miuix.kmp.basic.BadgedBox
@@ -201,9 +199,7 @@ internal fun IosLiquidGlassNavigationBar(
     showLabels: Boolean,
     modifier: Modifier = Modifier,
     badge: (Int) -> (@Composable () -> Unit)? = { null },
-    // LOCAL PATCH (XGesture): 外部 pager 进度驱动胶囊跟手 + 可配置模糊半径。
-    progress: (() -> Float)? = null,
-    isTracking: () -> Boolean = { false },
+    // LOCAL PATCH (XGesture): 可配置模糊半径。
     blurRadiusDp: Float = 4f,
 ) {
     val pillShape = remember { CircleShape }
@@ -303,17 +299,6 @@ internal fun IosLiquidGlassNavigationBar(
         if (currentIndex != selectedIndex) {
             currentIndex = selectedIndex
             dampedDrag.animateToValue(selectedIndex.toFloat())
-        }
-    }
-
-    // LOCAL PATCH (XGesture): 页面横滑时把 pager 小数进度映射到胶囊，保持与页面同步。
-    if (progress != null) {
-        LaunchedEffect(dampedDrag) {
-            snapshotFlow { progress() }.collectLatest { value ->
-                if (isTracking()) {
-                    dampedDrag.updateValue(value.coerceIn(0f, (tabsCount - 1).toFloat()))
-                }
-            }
         }
     }
 
