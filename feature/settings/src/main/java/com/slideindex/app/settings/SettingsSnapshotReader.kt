@@ -1169,6 +1169,8 @@ internal object SettingsSnapshotReader {
                 ?: base.edgeCardYFraction,
             edgeCardMaxCount = prefs[SettingsPreferenceKeys.MESSAGE_EDGE_CARD_MAX_COUNT]
                 ?: base.edgeCardMaxCount,
+            edgeCardMaxLines = prefs[SettingsPreferenceKeys.MESSAGE_EDGE_CARD_MAX_LINES]
+                ?: base.edgeCardMaxLines,
             floatIconCorner = MessageOverlayCorner.fromId(
                 prefs[SettingsPreferenceKeys.MESSAGE_FLOAT_ICON_CORNER],
             ),

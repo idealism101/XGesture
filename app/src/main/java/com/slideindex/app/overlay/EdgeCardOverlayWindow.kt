@@ -52,6 +52,9 @@ object EdgeCardOverlayWindow {
     private const val PREVIEW_KEY = "__edge_card_preview__"
 
     private const val CARD_HEIGHT_DP = 42f
+    /** 每多一行正文，卡片高度增加的高度（与悬浮菜单侧边样式一致）。 */
+    private const val LINE_HEIGHT_DP = 16f
+    private const val MAX_LINES = 3
     private const val EXPANDED_WIDTH_DP = 126f
     private const val WIDE_WIDTH_DP = 184f
     private const val VISIBLE_COLLAPSED_DP = 42f
@@ -275,6 +278,14 @@ object EdgeCardOverlayWindow {
 
     fun dismissImmediate() = dismiss()
 
+    /** 正文行数（1..3）。 */
+    internal fun lineCount(settings: MessageSettings): Int =
+        settings.edgeCardMaxLines.coerceIn(1, MAX_LINES)
+
+    /** 卡片高度随行数增长：42dp 起步，每多一行 +16dp。 */
+    internal fun cardHeightDp(settings: MessageSettings): Float =
+        CARD_HEIGHT_DP + (lineCount(settings) - 1) * LINE_HEIGHT_DP
+
     fun snapshotDisplayedKeys(): Set<String> =
         entries.map { "${it.plan.data.key}|${it.plan.data.postTime}" }.toSet()
 
@@ -445,25 +456,32 @@ object EdgeCardOverlayWindow {
 
     private fun ensureWindow(entry: EdgeCardEntry, hostContext: Context) {
         val settings = entry.plan.settings
-        val heightPx = dp(CARD_HEIGHT_DP)
         val view = EdgeCardView(hostContext).apply {
             exclusionEdge = settings.edgeCardHorizontalEdge
             setOnTouchListener(EdgeCardTouchListener(entry))
         }
-        // 先绑内容再测量：宽度由文字长度决定（和悬浮菜单一样是内容自适应）。
+        // 先绑内容再测量：宽高都由内容决定（正文行数多则卡片更高）。
         view.bind(entry.plan, entry.state)
         view.measure(
             View.MeasureSpec.makeMeasureSpec(
                 dp(120f) + dp(52f),
                 View.MeasureSpec.AT_MOST,
             ),
-            View.MeasureSpec.makeMeasureSpec(heightPx, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
         )
         val widthPx = view.measuredWidth.coerceAtLeast(dp(1f))
-        view.layout(0, 0, widthPx, heightPx)
+        val measuredHeight = view.measuredHeight.coerceAtLeast(dp(CARD_HEIGHT_DP))
+        view.layout(0, 0, widthPx, measuredHeight)
 
         entry.view = view
         entry.windowWidthPx = widthPx
+        entry.heightPx = measuredHeight
+        entry.onHeightChanged = { newHeight ->
+            if (entry.heightPx != newHeight) {
+                entry.heightPx = newHeight
+                relayout()
+            }
+        }
         entry.onWidthChanged = { newWidth ->
             entry.windowWidthPx = newWidth
             val params = entry.params
@@ -485,7 +503,7 @@ object EdgeCardOverlayWindow {
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
-            heightPx,
+            WindowManager.LayoutParams.WRAP_CONTENT,
             OverlayWindowTypes.overlayWindowType(hostContext),WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -519,13 +537,21 @@ object EdgeCardOverlayWindow {
         val ctx = appContext ?: return emptyList()
         if (count <= 0) return emptyList()
         val metrics = ctx.resources.displayMetrics
-        val cardPx = dp(CARD_HEIGHT_DP)
         val gapPx = dp(CARD_GAP_DP)
-        val total = count * cardPx + (count - 1).coerceAtLeast(0) * gapPx
+        // 每张卡行数可能不同，高度各自算。
+        val heights = entries.map {
+            it.heightPx.takeIf { h -> h > 0 } ?: dp(CARD_HEIGHT_DP)
+        }
+        val total = heights.sum() + gapPx * (count - 1).coerceAtLeast(0)
         val anchor = (MessagePlacementFractions.coerceY(settings.edgeCardYFraction) *
             metrics.heightPixels).roundToInt()
         val top = (anchor - total / 2).coerceIn(0, (metrics.heightPixels - total).coerceAtLeast(0))
-        return List(count) { top + it * (cardPx + gapPx) }
+        var cursor = top
+        return heights.map { height ->
+            val y = cursor
+            cursor += height + gapPx
+            y
+        }
     }
 
     private fun relayout() {
@@ -783,6 +809,9 @@ private class EdgeCardEntry(
     var interacting: Boolean = false
     var y: Int = 0
     var windowWidthPx: Int = 0
+    /** 卡片实际高度（随正文行数变化），用于多卡堆叠定位。 */
+    var heightPx: Int = 0
+    var onHeightChanged: ((Int) -> Unit)? = null
     var onWidthChanged: ((Int) -> Unit)? = null
     val createdAt: Long = android.os.SystemClock.uptimeMillis()
 
@@ -977,9 +1006,9 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
      * 卡片皮肤：复用侧边气泡主题的左右背景 drawable（形状与贴边方向一致），
      * 文字色也取自主题；主题没有侧边资源时退回白底 + 1px 描边。
      */
-    /** 固定外观：半圆 + 矩形，白底 + 1 物理像素描边。 */
-    private fun applyCardBackground(right: Boolean) {
-        val corner = dp(21).toFloat()
+    /** 固定外观：半圆 + 矩形，白底 + 1 物理像素描边。圆角按实际高度算，多行时仍是半圆。 */
+    private fun applyCardBackground(right: Boolean, heightPx: Int) {
+        val corner = (heightPx.coerceAtLeast(dp(40)) / 2).toFloat()
         cardLayer.background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             setColor(Color.WHITE)
@@ -1019,7 +1048,18 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
         }
 
         val right = settings.edgeCardHorizontalEdge == SideBubbleHorizontalEdge.Right
-        applyCardBackground(right)
+        alignedRight = right
+        applyCardBackground(right, if (height > 0) height else dp(42))
+
+        // 行数上限：单行保跑马灯，多行改为换行 + 末尾省略；实际高度由内容行数决定。
+        maxLines = EdgeCardOverlayWindow.lineCount(settings)
+        contentView.maxLines = maxLines
+        contentView.isSingleLine = maxLines == 1
+        contentView.ellipsize = if (maxLines == 1) {
+            TextUtils.TruncateAt.MARQUEE
+        } else {
+            TextUtils.TruncateAt.END
+        }
 
         val avatarParams = avatarContainer.layoutParams as FrameLayout.LayoutParams
         avatarParams.gravity = (if (right) Gravity.START else Gravity.END) or Gravity.CENTER_VERTICAL
@@ -1043,7 +1083,6 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val heightPx = MeasureSpec.getSize(heightMeasureSpec).coerceAtLeast(dp(42))
         // 宽度按内容算：图标区固定，文字区取标题/正文里较宽的那个，限制在 40..120dp。
         val maxText = dp(120)
         val minText = dp(40)
@@ -1059,10 +1098,23 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
         } else {
             totalW
         }
-        setMeasuredDimension(w, heightPx)
+        // 用最终文字宽度重测：否则按 maxText 宽度算出来的行数偏少，
+        // 卡片高度不够，第二行下面会再露出第三行的一小截。
+        val exactText = MeasureSpec.makeMeasureSpec(textW, MeasureSpec.EXACTLY)
+        val unbounded = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+        titleView.measure(exactText, unbounded)
+        contentView.measure(exactText, unbounded)
+        val textHeight = titleView.measuredHeight + dp(2) + contentView.measuredHeight
+        val contentHeight = maxOf(textHeight + dp(8), dp(42))
+        val h = if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.AT_MOST) {
+            minOf(contentHeight, MeasureSpec.getSize(heightMeasureSpec).takeIf { it > 0 } ?: contentHeight)
+        } else {
+            contentHeight
+        }
+        setMeasuredDimension(w, h)
         cardLayer.measure(
             MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY),
-            MeasureSpec.makeMeasureSpec(heightPx, MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY),
         )
     }
 
@@ -1082,10 +1134,21 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
         super.onSizeChanged(w, h, oldw, oldh)
         updateGestureExclusion()
         if (w != oldw) onWidthChanged?.invoke(w)
+        if (h != oldh && h > 0) {
+            // 高度随正文行数变化：圆角要重算，外层也要重排堆叠位置。
+            applyCardBackground(alignedRight, h)
+            onHeightChanged?.invoke(h)
+        }
     }
 
     /** 卡片内容宽度变化（文字长短变了）时通知外层重算贴边位置。 */
     var onWidthChanged: ((Int) -> Unit)? = null
+
+    /** 卡片高度变化（正文行数变了）时通知外层重排。 */
+    var onHeightChanged: ((Int) -> Unit)? = null
+
+    private var alignedRight = true
+    private var maxLines = 1
 
     private fun updateGestureExclusion() {
         if (width <= 0 || height <= 0) return

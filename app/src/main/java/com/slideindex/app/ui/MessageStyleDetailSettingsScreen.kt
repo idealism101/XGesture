@@ -76,6 +76,7 @@ fun MessageStyleDetailSettingsScreen(
     onEdgeCardOpacityChange: (Float) -> Unit = {},
     onEdgeCardAutoCollapseMsChange: (Int) -> Unit = {},
     onEdgeCardMaxCountChange: (Int) -> Unit = {},
+    onEdgeCardMaxLinesChange: (Int) -> Unit = {},
     onEdgeCardHorizontalEdgeChange: (SideBubbleHorizontalEdge) -> Unit = {},
     onEdgeCardYFractionPreviewChange: (Float) -> Unit = {},
     onEdgeCardYFractionPreviewCommit: () -> Unit = {},
@@ -162,6 +163,7 @@ fun MessageStyleDetailSettingsScreen(
         onOpacityChange = onEdgeCardOpacityChange,
         onAutoCollapseSecondsChange = onEdgeCardAutoCollapseMsChange,
         onMaxCountChange = onEdgeCardMaxCountChange,
+        onMaxLinesChange = onEdgeCardMaxLinesChange,
         onPreviewChange = onMessagePreviewChange,
         onPreviewCommit = onMessagePreviewCommit,
     )

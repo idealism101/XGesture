@@ -157,6 +157,11 @@ class MessageSettingsMutator @Inject constructor(
     suspend fun setMessageEdgeCardHorizontalEdge(edge: String) =
         editor.edit { it[SettingsPreferenceKeys.MESSAGE_EDGE_CARD_HORIZONTAL_EDGE] = edge }
 
+    suspend fun setMessageEdgeCardMaxLines(lines: Int) =
+        editor.edit {
+            it[SettingsPreferenceKeys.MESSAGE_EDGE_CARD_MAX_LINES] = lines.coerceIn(1, 3)
+        }
+
     suspend fun setMessageEdgeCardYFraction(fraction: Float) =
         editor.edit {
             it[SettingsPreferenceKeys.MESSAGE_EDGE_CARD_Y_FRACTION] =

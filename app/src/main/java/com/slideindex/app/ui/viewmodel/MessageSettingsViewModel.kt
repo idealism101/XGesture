@@ -199,6 +199,10 @@ class MessageSettingsViewModel @Inject constructor(
         settingsRepository.setMessageEdgeCardMaxCount(count)
     }
 
+    fun setMessageEdgeCardMaxLines(lines: Int) = launchSettingsWrite {
+        settingsRepository.setMessageEdgeCardMaxLines(lines)
+    }
+
     fun setMessageDanmakuThemeId(themeId: String) = launchSettingsWrite {
         settingsRepository.setMessageDanmakuThemeId(themeId)
     }

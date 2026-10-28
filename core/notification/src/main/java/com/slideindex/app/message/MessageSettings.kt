@@ -96,6 +96,8 @@ data class MessageSettings(
     val edgeCardYFraction: Float = 0.5f,
     /** 同时显示的最大会话卡数量（1..5），超出时移除最久的一张。 */
     val edgeCardMaxCount: Int = 3,
+    /** 正文显示行数（1..3）；每多一行卡片高度 +16dp。 */
+    val edgeCardMaxLines: Int = 2,
 ) {
     @Suppress("DEPRECATION")
     val style: MessageStyle get() = MessageStyle.fromId(styleId)

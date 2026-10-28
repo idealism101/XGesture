@@ -26,6 +26,7 @@ fun edgeCardSettingsCardItems(
     onOpacityChange: (Float) -> Unit,
     onAutoCollapseSecondsChange: (Int) -> Unit,
     onMaxCountChange: (Int) -> Unit = {},
+    onMaxLinesChange: (Int) -> Unit = {},
     onPreviewChange: (MessageSettings) -> Unit = {},
     onPreviewCommit: () -> Unit = {},
 ): List<CardItem> = buildList {
@@ -40,6 +41,20 @@ fun edgeCardSettingsCardItems(
                 label = settings.edgeCardMaxCount.toString(),
                 formatLabel = { it.toInt().toString() },
                 onValueChange = { value -> onMaxCountChange(value.toInt()) },
+            )
+        },
+    )
+    add(
+        settingsCardScopeItem("edge-card-max-lines") {
+            SettingsSliderRow(
+                title = stringResource(R.string.message_style_edge_card_max_lines),
+                value = settings.edgeCardMaxLines.coerceIn(1, 3).toFloat(),
+                valueRange = 1f..3f,
+                steps = 1,
+                enabled = enabled,
+                label = settings.edgeCardMaxLines.coerceIn(1, 3).toString(),
+                formatLabel = { it.toInt().toString() },
+                onValueChange = { value -> onMaxLinesChange(value.toInt()) },
             )
         },
     )

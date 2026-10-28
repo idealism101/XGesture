@@ -1152,6 +1152,7 @@ class SettingsRepository @Inject constructor(
     suspend fun setMessageEdgeCardYFraction(fraction: Float) =
         message.setMessageEdgeCardYFraction(fraction)
     suspend fun setMessageEdgeCardMaxCount(count: Int) = message.setMessageEdgeCardMaxCount(count)
+    suspend fun setMessageEdgeCardMaxLines(lines: Int) = message.setMessageEdgeCardMaxLines(lines)
     suspend fun setMessageThemeId(themeId: String) = message.setMessageThemeId(themeId)
     suspend fun setMessageSideThemeId(themeId: String) = message.setMessageSideThemeId(themeId)
     suspend fun setMessageDanmakuThemeId(themeId: String) = message.setMessageDanmakuThemeId(themeId)

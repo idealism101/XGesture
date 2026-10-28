@@ -526,6 +526,7 @@ internal object SettingsPreferenceKeys {
     val MESSAGE_EDGE_CARD_HORIZONTAL_EDGE = stringPreferencesKey("message_edge_card_horizontal_edge")
     val MESSAGE_EDGE_CARD_Y_FRACTION = floatPreferencesKey("message_edge_card_y_fraction")
     val MESSAGE_EDGE_CARD_MAX_COUNT = intPreferencesKey("message_edge_card_max_count")
+    val MESSAGE_EDGE_CARD_MAX_LINES = intPreferencesKey("message_edge_card_max_lines")
     val MESSAGE_HIDE_IN_LANDSCAPE = booleanPreferencesKey("message_hide_in_landscape")
     val MESSAGE_PORTRAIT_DANMAKU = booleanPreferencesKey("message_portrait_danmaku")
     val MESSAGE_LANDSCAPE_DANMAKU = booleanPreferencesKey("message_landscape_danmaku")

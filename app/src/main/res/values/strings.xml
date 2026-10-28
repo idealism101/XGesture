@@ -241,6 +241,7 @@
     <string name="message_style_edge_card_opacity">Collapsed opacity</string>
     <string name="message_style_edge_card_auto_collapse">Auto-collapse</string>
     <string name="message_style_edge_card_max_count">Cards shown at once</string>
+    <string name="message_style_edge_card_max_lines">Content lines</string>
     <string name="message_style_edge_card_auto_collapse_off">Never</string>
     <string name="message_style_edge_card_position">Card position</string>
     <string name="message_style_edge_card_position_hint">Choose left or right edge, then adjust vertical position</string>
