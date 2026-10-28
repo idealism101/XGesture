@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 文件浏览器（独立资源文件，避免改动现有 strings.xml）。 -->
+<resources>
+    <string name="file_browser_title">文件浏览器</string>
+    <string name="file_browser_entry_desc">浏览系统根目录、内部存储与 Android/data。</string>
+
+    <string name="file_browser_search_hint">搜索当前文件夹</string>
+    <string name="file_browser_crumb_root">根目录</string>
+    <string name="file_browser_crumb_internal">内部存储</string>
+
+    <string name="file_browser_quick_root">系统根目录</string>
+    <string name="file_browser_quick_internal">内部存储</string>
+    <string name="file_browser_quick_android_data">Android/data</string>
+    <string name="file_browser_quick_download">下载</string>
+    <string name="file_browser_quick_app_data">应用数据</string>
+
+    <string name="file_browser_access_detecting">检测权限…</string>
+    <string name="file_browser_access_root">Root</string>
+    <string name="file_browser_access_shizuku">Shizuku</string>
+    <string name="file_browser_access_all_files">所有文件</string>
+    <string name="file_browser_access_limited">受限</string>
+
+    <string name="file_browser_refresh">刷新</string>
+    <string name="file_browser_menu">更多选项</string>
+    <string name="file_browser_close">关闭</string>
+
+    <string name="file_browser_sort_name">名称</string>
+    <string name="file_browser_sort_time">修改时间</string>
+    <string name="file_browser_sort_size">大小</string>
+    <string name="file_browser_sort_asc">升序</string>
+    <string name="file_browser_sort_desc">降序</string>
+    <string name="file_browser_show_hidden">显示隐藏文件</string>
+    <string name="file_browser_copy_current_path">复制当前路径</string>
+
+    <string name="file_browser_empty_dir">此文件夹为空。</string>
+    <string name="file_browser_empty_search">没有匹配的文件。</string>
+    <string name="file_browser_loading">正在读取…</string>
+    <string name="file_browser_truncated">仅显示前 %1$d 项。</string>
+    <string name="file_browser_item_count">共 %1$d 项</string>
+
+    <string name="file_browser_banner_limited">当前只能浏览应用可访问的文件。</string>
+    <string name="file_browser_grant_all_files">授予所有文件访问</string>
+    <string name="file_browser_grant_shizuku">授予 Shizuku</string>
+    <string name="file_browser_retry">重试</string>
+
+    <string name="file_browser_error_permission">无法访问此文件夹</string>
+    <string name="file_browser_error_permission_hint">文件夹存在，但应用没有读取权限。</string>
+    <string name="file_browser_error_needs_root">需要 Root 权限</string>
+    <string name="file_browser_error_needs_root_hint">Shizuku 以 shell 身份运行，无法读取 /data。请切换到 Root 模式后重试。</string>
+    <string name="file_browser_error_privilege">需要特权访问</string>
+    <string name="file_browser_error_privilege_shizuku_hint">请启动 Shizuku 并授予权限，然后重试。</string>
+    <string name="file_browser_error_privilege_root_hint">Root 尚未授权。请在应用设置中授予 Root 权限后重试。</string>
+    <string name="file_browser_error_not_found">文件夹不存在</string>
+    <string name="file_browser_error_not_dir">这不是文件夹</string>
+    <string name="file_browser_error_timeout">读取超时</string>
+    <string name="file_browser_error_unknown">读取此文件夹失败</string>
+
+    <string name="file_browser_kind_folder">文件夹</string>
+    <string name="file_browser_kind_link">链接</string>
+    <string name="file_browser_kind_file">文件</string>
+
+    <string name="file_browser_details_title">详情</string>
+    <string name="file_browser_detail_name">名称</string>
+    <string name="file_browser_detail_path">路径</string>
+    <string name="file_browser_detail_size">大小</string>
+    <string name="file_browser_detail_modified">修改时间</string>
+    <string name="file_browser_detail_permissions">权限</string>
+    <string name="file_browser_detail_type">类型</string>
+    <string name="file_browser_copy_path">复制路径</string>
+    <string name="file_browser_copied">已复制</string>
+</resources>

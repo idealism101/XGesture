@@ -455,6 +455,7 @@ private fun QuickMenuToolScreen(
         QuickMenuTool.ENTRY_STASH_PANEL,
         QuickMenuTool.PAGE_SCROLL,
         QuickMenuTool.WIDGET_PANEL,
+        QuickMenuTool.FILE_BROWSER,
         -> Unit
     }
 }

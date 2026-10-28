@@ -11,6 +11,7 @@ import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.Widgets
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.CurrencyExchange
+import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.HourglassBottom
 import androidx.compose.material.icons.outlined.Info
@@ -151,6 +152,12 @@ enum class QuickMenuTool(
         group = QuickMenuGroup.TOOL,
         icon = Icons.Outlined.Colorize,
     ),
+    FILE_BROWSER(
+        titleRes = R.string.file_browser_title,
+        descRes = R.string.file_browser_entry_desc,
+        group = QuickMenuGroup.TOOL,
+        icon = Icons.Outlined.FolderOpen,
+    ),
 
     // ---- 应用已有的功能/面板：**预置入口**，点一下即打开，不需要任何配置 ----
     // 这三项不是"工具"，是把 App 里本来就要翻好几层才找得到的东西直接收进菜单。
@@ -222,6 +229,44 @@ enum class QuickMenuTool(
         icon = Icons.Outlined.Apps,
     ),
     ;
+
+    /**
+     * 该工具是否是“点一下打开独立面板”的预置入口。
+     *
+     * [com.slideindex.app.overlay.quickmenu.QuickMenuOverlayWindow] 用它兜底：入口打开失败时
+     * 留在工具列表，而不是切到一个没有任何内容的空白子页。
+     */
+    val opensStandalonePanel: Boolean
+        get() = when (this) {
+            ENTRY_FOREGROUND_ACTIVITY,
+            ENTRY_FREEZER,
+            ENTRY_SHELL_PANEL,
+            ENTRY_SEARCH_PANEL,
+            ENTRY_CLIPBOARD_PANEL,
+            ENTRY_PIN_TO_SCREEN,
+            ENTRY_STASH_PANEL,
+            PAGE_SCROLL,
+            WIDGET_PANEL,
+            FILE_BROWSER,
+            -> true
+
+            UNIT_CONVERTER,
+            CURRENCY_CONVERTER,
+            QR_GENERATOR,
+            SCAN_DECODER,
+            TEXT_TOOL,
+            TRANSLATE,
+            PASSWORD,
+            STOPWATCH,
+            COUNTDOWN,
+            REMINDER,
+            TIMER_HISTORY,
+            CALCULATOR,
+            POMODORO,
+            COLOR_PICKER,
+            MACRO_RUN,
+            -> false
+        }
 
     companion object {
         /** 按标题/描述/分组名做一次不区分大小写的包含匹配；空查询返回全部。 */
