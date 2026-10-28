@@ -170,7 +170,6 @@ class EdgeGestureOverlayView(
         overlayHosts.indexPanelContentRectProvider = { it.indexPanelContentRect() }
     }
     private val adjustPanelController: AdjustPanelOverlayController = AdjustPanelOverlayController(overlayHosts)
-    private val taskSwitcherController: TaskSwitcherOverlayController = TaskSwitcherOverlayController(overlayHosts)
 
     private var overlayAccessibilityDelegate: OverlayAccessibilityDelegate? = null
     private var lastAccessibilityFingerprint: Int = 0
@@ -196,7 +195,6 @@ class EdgeGestureOverlayView(
         panelGridSession = panelGridSession,
         panelEnterAnimator = panelEnterAnimator,
         adjustPanelController = adjustPanelController,
-        taskSwitcherController = taskSwitcherController,
         quickLauncherController = quickLauncherController,
         shellCoordinator = shellCoordinator,
         gestureAnimationCoordinator = gestureAnimationCoordinator,
@@ -224,7 +222,6 @@ class EdgeGestureOverlayView(
         adjustPanelController = adjustPanelController,
         indexPanelRenderer = indexPanelRenderer,
         quickLauncherController = quickLauncherController,
-        taskSwitcherController = taskSwitcherController,
         shellCoordinator = shellCoordinator,
         panelEnterAnimator = panelEnterAnimator,
         panelContentRect = panelContentRect,
@@ -243,7 +240,6 @@ class EdgeGestureOverlayView(
         adjustPanelController = adjustPanelController,
         quickLauncherController = quickLauncherController,
         shellCoordinator = shellCoordinator,
-        taskSwitcherController = taskSwitcherController,
         indexPanelRenderer = indexPanelRenderer,
         gestureAnimationCoordinator = gestureAnimationCoordinator,
         rawToLocal = ::rawToLocal,
@@ -283,7 +279,6 @@ class EdgeGestureOverlayView(
             when {
                 shellCoordinator.handleBackPress() -> true
                 quickLauncherController.handleBackPress() -> true
-                taskSwitcherController.handleBackPress() -> true
                 else -> false
             }
         }
@@ -346,7 +341,6 @@ class EdgeGestureOverlayView(
             val anchorRawX = loc[0] + localX
             externalPanelAnchorLocalY = localY
             when (action) {
-                is GestureAction.TaskSwitcher -> taskSwitcherController.setExternalAnchor(anchorRawY)
                 is GestureAction.QuickLauncher -> quickLauncherController.setAnchorRawY(anchorRawY)
                 else -> Unit
             }
@@ -690,7 +684,6 @@ class EdgeGestureOverlayView(
             indexSession = indexSession,
             panelGridSession = panelGridSession,
             quickLauncherController = quickLauncherController,
-            taskSwitcherController = taskSwitcherController,
             shellPanelController = shellCoordinator.shellCommandPanelController(),
             appsByPackage = quickLauncherController.quickLauncherAppsByPackage
         )

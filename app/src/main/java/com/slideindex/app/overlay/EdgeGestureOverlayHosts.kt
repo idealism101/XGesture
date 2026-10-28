@@ -53,8 +53,7 @@ internal class EdgeGestureOverlayHosts(
 ) : ShellPanelOverlayController.Host,
     QuickLauncherOverlayController.Host,
     IndexPanelRenderer.Host,
-    AdjustPanelOverlayController.Host,
-    TaskSwitcherOverlayController.Host {
+    AdjustPanelOverlayController.Host {
 
     var indexPanelContentRectProvider: (() -> RectF)? = null
 

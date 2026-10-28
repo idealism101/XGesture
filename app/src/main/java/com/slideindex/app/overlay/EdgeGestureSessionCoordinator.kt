@@ -71,7 +71,6 @@ internal class EdgeGestureSessionCoordinator(
     private val panelGridSession: PanelGridSession,
     private val panelEnterAnimator: OverlayPanelEnterAnimator,
     private val adjustPanelController: AdjustPanelOverlayController,
-    private val taskSwitcherController: TaskSwitcherOverlayController,
     private val quickLauncherController: QuickLauncherOverlayController,
     private val shellCoordinator: ShellPanelOverlayController,
     private val gestureAnimationCoordinator: GestureAnimationCoordinator,
@@ -113,10 +112,8 @@ internal class EdgeGestureSessionCoordinator(
         layoutCoordinator.syncZoneLayout()
         panelEnterAnimator.cancel()
         when (mode) {
-            OverlayPanelMode.TASK_SWITCHER -> {
-                panelEnterAnimator.resetToHidden()
-                taskSwitcherController.onSessionStart()
-            }
+            // 任务切换面板已迁移到 SystemUI 进程（ty=2038 overlay），App 侧不再驱动其会话。
+            OverlayPanelMode.TASK_SWITCHER -> panelEnterAnimator.resetToHidden()
             OverlayPanelMode.INDEX, OverlayPanelMode.QUICK_LAUNCHER,
             OverlayPanelMode.SHELL_COMMANDS -> {
                 panelEnterAnimator.resetToHidden()
@@ -155,9 +152,6 @@ internal class EdgeGestureSessionCoordinator(
                     return@runAfterLayout
                 }
                 layoutCoordinator.syncZoneLayout()
-                if (mode == OverlayPanelMode.TASK_SWITCHER) {
-                    taskSwitcherController.onLayoutReady()
-                }
                 if (mode == OverlayPanelMode.QUICK_LAUNCHER) {
                     quickLauncherController.onLayoutReady()
                 }
@@ -189,7 +183,6 @@ internal class EdgeGestureSessionCoordinator(
         panelEnterAnimator.resetToComplete()
         layoutCoordinator.syncZoneLayout()
         panelGridSession.reset()
-        taskSwitcherController.onSessionEnd()
         quickLauncherController.onSessionEnd()
         shellCoordinator.onSessionEnd()
         HoneycombAppPickerOverlayWindow.onGestureSessionEnd()

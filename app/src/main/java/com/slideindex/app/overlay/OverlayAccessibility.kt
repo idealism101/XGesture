@@ -151,7 +151,6 @@ internal object EdgeGestureOverlayAccessibilityCollector {
         indexSession: SlideAlongRailSession,
         panelGridSession: PanelGridSession,
         quickLauncherController: QuickLauncherOverlayController,
-        taskSwitcherController: TaskSwitcherOverlayController,
         shellPanelController: ShellCommandPanelController,
         appsByPackage: Map<String, AppInfo>
     ): OverlayAccessibilitySnapshot {
@@ -160,8 +159,8 @@ internal object EdgeGestureOverlayAccessibilityCollector {
             OverlayPanelMode.INDEX -> collectIndexNodes(context, zoneLayout, indexSession)
             OverlayPanelMode.QUICK_LAUNCHER ->
                 collectQuickLauncherNodes(context, panelGridSession, quickLauncherController, appsByPackage)
-            OverlayPanelMode.TASK_SWITCHER ->
-                collectTaskSwitcherNodes(context, taskSwitcherController)
+            // 任务切换面板已迁移到 SystemUI 进程，App 侧不再收集其无障碍节点。
+            OverlayPanelMode.TASK_SWITCHER -> emptyList()
             OverlayPanelMode.SHELL_COMMANDS ->
                 collectShellNodes(context, shellPanelController)
             OverlayPanelMode.NONE -> emptyList()
@@ -222,12 +221,6 @@ internal object EdgeGestureOverlayAccessibilityCollector {
         val toolbarNodes = quickLauncherController.collectToolbarAccessibilityNodes(context, panelRect)
         return itemNodes + toolbarNodes
     }
-
-    private fun collectTaskSwitcherNodes(
-        context: android.content.Context,
-        taskSwitcherController: TaskSwitcherOverlayController
-    ): List<OverlayVirtualNode> =
-        taskSwitcherController.collectAccessibilityNodes(context)
 
     private fun collectShellNodes(
         context: android.content.Context,

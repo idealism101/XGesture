@@ -9,6 +9,7 @@ import com.slideindex.app.xposed.hook.SystemInputFilterHook
 import com.slideindex.app.xposed.hook.SystemInputInjectorHook
 import com.slideindex.app.xposed.hook.otp.SmsPolicyRuntime
 import com.slideindex.app.xposed.bridge.ModuleHookBridgeContract
+import com.slideindex.app.xposed.taskcenter.TaskCenterSystemUiHook
 import io.github.libxposed.api.XposedInterface
 import io.github.libxposed.api.XposedModule
 import io.github.libxposed.api.XposedModuleInterface.HotReloadedParam
@@ -55,6 +56,10 @@ class SlideIndexLibXposedModule : XposedModule() {
         log(Log.INFO, TAG, "onPackageReady telephony provider")
         installTelephonyProviderHooks(param.classLoader)
       }
+      SYSTEMUI_PACKAGE -> {
+        log(Log.INFO, TAG, "onPackageReady systemui")
+        installSystemUiHooks(param.classLoader)
+      }
     }
   }
 
@@ -69,6 +74,7 @@ class SlideIndexLibXposedModule : XposedModule() {
     systemServerClassLoader?.let(::installSystemServerHooks)
     packageReadyParams[PHONE_PACKAGE]?.let { installPhoneHooks(it.classLoader) }
     packageReadyParams[TELEPHONY_PROVIDER_PACKAGE]?.let { installTelephonyProviderHooks(it.classLoader) }
+    packageReadyParams[SYSTEMUI_PACKAGE]?.let { installSystemUiHooks(it.classLoader) }
   }
 
   private fun installSystemServerHooks(classLoader: ClassLoader) {
@@ -101,10 +107,15 @@ class SlideIndexLibXposedModule : XposedModule() {
     smsProviderHook.install(this, classLoader)
   }
 
+  private fun installSystemUiHooks(classLoader: ClassLoader) {
+    TaskCenterSystemUiHook.install(classLoader)
+  }
+
   companion object {
     private const val TAG = "SlideIndexXposed"
     private const val PHONE_PACKAGE = "com.android.phone"
     private const val TELEPHONY_PROVIDER_PACKAGE = "com.android.providers.telephony"
+    private const val SYSTEMUI_PACKAGE = "com.android.systemui"
     private val smsHandlerHook = SmsHandlerHook()
     private val smsProviderHook = SmsProviderHook()
     private val systemInputInjectorHook = SystemInputInjectorHook()

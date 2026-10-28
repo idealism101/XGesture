@@ -6,9 +6,30 @@ import com.slideindex.app.di.OverlayDependencyAccess
 import com.slideindex.app.overlay.EdgeContinuedOverlayLaunchCoordinator
 import com.slideindex.app.overlay.toFloatBallPickDockSide
 import com.slideindex.app.overlay.OverlayPanelMode
+import com.slideindex.app.overlay.PanelSide
 import com.slideindex.app.settings.actionFor
+import com.slideindex.app.xposed.taskcenter.GestureCorner
+import com.slideindex.app.xposed.taskcenter.TaskCenterBridge
 import com.slideindex.app.settings.resolvedTriggerMode
 import com.slideindex.app.util.ContinuousAdjustController
+
+/**
+ * 把"任务切换"手势重路由到我们的任务中心：跨进程发广播给 SystemUI 钩子，
+ * 并由 SystemUI 进程拉起 overlay（ty=2038）。旧的 App 内 TaskSwitcherOverlayController 不再打开。
+ */
+internal fun GestureSession.openTaskCenter(anchorX: Float, anchorY: Float) {
+    val ctx = sessionActionExecutor.context
+    val corner = runCatching { GestureCorner.valueOf(sessionSide.name) }
+        .getOrDefault(
+            if (anchorX <= ctx.resources.displayMetrics.widthPixels / 2f) {
+                GestureCorner.LEFT
+            } else {
+                GestureCorner.RIGHT
+            },
+        )
+    TaskCenterBridge.sendOpen(ctx, anchorX, anchorY, corner)
+    endSession()
+}
 
 internal fun GestureSession.dispatchMoveTimeGesture(
     classification: SwipeClassification,
@@ -64,7 +85,7 @@ internal fun GestureSession.trackContinuousGesture(
         GestureAction.TaskSwitcher -> {
             if (sessionPanelMode != OverlayPanelMode.TASK_SWITCHER) {
                 sessionContinuousPick.taskSwitcher = true
-                openPanel(OverlayPanelMode.TASK_SWITCHER)
+                openTaskCenter(rawX, rawY)
             }
         }
 
@@ -375,7 +396,7 @@ internal fun GestureSession.handleClassifiedGesture(
         is GestureAction.TaskSwitcher -> {
             sessionContinuousPick.taskSwitcher = false
             sessionCallbacks.hapticConfirmLaunch()
-            openPanel(OverlayPanelMode.TASK_SWITCHER)
+            openTaskCenter(rawX, rawY)
         }
 
         is GestureAction.LaunchApp -> {
@@ -542,7 +563,13 @@ internal fun GestureSession.dispatchQuickLauncherAction(
         GestureAction.TaskSwitcher -> {
             sessionContinuousPick.taskSwitcher = false
             if (confirmHaptic) sessionCallbacks.hapticConfirmLaunch()
-            openPanel(OverlayPanelMode.TASK_SWITCHER)
+            val w = sessionActionExecutor.context.resources.displayMetrics.widthPixels
+            val anchorX = when (sessionSide) {
+                PanelSide.LEFT -> 0f
+                PanelSide.RIGHT -> w.toFloat()
+                else -> w / 2f
+            }
+            openTaskCenter(anchorX, rawY)
             return false
         }
         GestureAction.ShellCommandPanel -> {
