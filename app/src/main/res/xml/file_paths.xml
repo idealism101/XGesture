@@ -30,4 +30,11 @@
     <external-cache-path
         name="update_external_cache"
         path="update/" />
+    <cache-path
+        name="filebrowser_cache"
+        path="filebrowser/" />
+    <!-- 文件浏览器：仅对 App 可直读的共享存储文件生成 content:// URI。 -->
+    <external-path
+        name="filebrowser_external"
+        path="." />
 </paths>

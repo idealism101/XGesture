@@ -179,6 +179,7 @@ object GestureActionCatalog {
         GestureActionType.WIDGET_POPUP_OVERLAY,
         GestureActionType.QUICK_TOOLS_OVERLAY,
         GestureActionType.QUICK_MENU,
+        GestureActionType.FILE_BROWSER,
         GestureActionType.WECHAT_SCAN,
         GestureActionType.WECHAT_PAY_CODE,
         GestureActionType.ALIPAY_PAY_CODE,
@@ -324,6 +325,7 @@ object GestureActionCatalog {
         // 4. 面板与启动器 (Panels & Launchers)
         GestureAction.AppCarouselSwitcher,
         GestureAction.SearchPanel,
+        GestureAction.FileBrowser,
         GestureAction.OpenLink(url = ""),
         GestureAction.VolumePanel,
         GestureAction.ClipboardPanel,

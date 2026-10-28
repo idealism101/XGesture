@@ -7,6 +7,7 @@ import com.slideindex.app.copy.UniversalCopyOverlay
 import com.slideindex.app.freezer.FreezerOverlayWindow
 import com.slideindex.app.overlay.ringlauncher.RingLauncherOverlayWindow
 import com.slideindex.app.overlay.holographic.HolographicLauncherOverlayWindow
+import com.slideindex.app.overlay.filebrowser.FileBrowserOverlayWindow
 import com.slideindex.app.overlay.searchpanel.SearchPanelOverlayWindow
 import com.slideindex.app.overlay.volumepanel.VolumePanelOverlayWindow
 import com.slideindex.app.translate.overlay.ScreenTranslationController
@@ -39,6 +40,7 @@ object GlobalOverlayDismissHelper {
         Log.i(TAG, "Dismissing all active overlay panels due to screen off / device lock")
 
         runCatching { SearchPanelOverlayWindow.dismiss() }
+        runCatching { FileBrowserOverlayWindow.dismiss() }
         runCatching { WidgetPickerOverlayWindow.dismiss() }
         runCatching { WidgetPopupOverlayWindow.dismiss() }
         runCatching { SideBubbleOverlayWindow.dismiss() }

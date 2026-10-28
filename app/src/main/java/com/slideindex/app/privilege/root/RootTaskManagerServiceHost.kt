@@ -498,11 +498,38 @@ object RootTaskManagerServiceHost {
 
         val processLine = buildString {
 
-            append("CLASSPATH=").append(apk).append(' ')
+            if (RootNamespace.isUsable()) {
 
-            append("exec app_process /system/bin ").append(mainClass).append(' ')
+                // 必须从 init 的 mount namespace 启动：否则 /data/data 只剩本 App 的 tmpfs 桩。
+                append("CLASSPATH=").append(apk).append(' ')
 
-            append(TaskManagerShellExecutor.shellQuote(pkg))
+                append("exec ").append(RootNamespace.NSENTER_PATH).append(" -t 1 -m -- ")
+
+                append("/system/bin/app_process /system/bin ").append(mainClass).append(' ')
+
+                append(TaskManagerShellExecutor.shellQuote(pkg))
+
+            } else if (RootNamespace.mountMasterUsable()) {
+
+                // 没有 nsenter：用 su --mount-master 在全局 namespace 里起 daemon。
+                val inner = "CLASSPATH=" + apk + " exec app_process /system/bin " +
+                    mainClass + " " + TaskManagerShellExecutor.shellQuote(pkg)
+
+                append("exec ").append(TaskManagerShellExecutor.resolveSuInvocation())
+
+                append(" --mount-master -c ")
+
+                append(TaskManagerShellExecutor.shellQuote(inner))
+
+            } else {
+
+                append("CLASSPATH=").append(apk).append(' ')
+
+                append("exec app_process /system/bin ").append(mainClass).append(' ')
+
+                append(TaskManagerShellExecutor.shellQuote(pkg))
+
+            }
 
         }
 

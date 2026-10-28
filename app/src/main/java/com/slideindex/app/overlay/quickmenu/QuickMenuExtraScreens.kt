@@ -9,7 +9,9 @@ import com.slideindex.app.freezer.FreezerOverlayWindow
 import com.slideindex.app.overlay.FloatBallStashPanel
 import com.slideindex.app.overlay.PanelSide
 import com.slideindex.app.overlay.WidgetPopupOverlayWindow
+import com.slideindex.app.overlay.filebrowser.FileBrowserOverlayWindow
 import com.slideindex.app.pagescroll.PageScrollActionRunner
+import com.slideindex.app.settings.AppSettings
 import com.slideindex.app.overlay.ForegroundActivityInspectorOverlayWindow
 import com.slideindex.app.overlay.PinToScreenDialog
 import com.slideindex.app.overlay.StashPanelInitialTab
@@ -35,7 +37,11 @@ private fun copyToClipboard(context: Context, label: String, text: String) {
     }
 }
 
-internal fun quickMenuRunEntry(context: Context, tool: QuickMenuTool): Boolean = when (tool) {
+internal fun quickMenuRunEntry(
+    context: Context,
+    tool: QuickMenuTool,
+    settings: AppSettings,
+): Boolean = when (tool) {
     QuickMenuTool.ENTRY_FOREGROUND_ACTIVITY -> runCatching {
         ForegroundActivityInspectorOverlayWindow.show(context)
         true
@@ -90,10 +96,15 @@ internal fun quickMenuRunEntry(context: Context, tool: QuickMenuTool): Boolean =
         val deps = OverlayDependencyAccess.overlayDependencies(context) ?: return@runCatching false
         val appContext = context.applicationContext
         QuickMenuWork.launch {
-            val settings = deps.settingsRepository.settings.first()
-            WidgetPopupOverlayWindow.show(appContext, settings, PanelSide.RIGHT, null)
+            val depsSettings = deps.settingsRepository.settings.first()
+            WidgetPopupOverlayWindow.show(appContext, depsSettings, PanelSide.RIGHT, null)
         }
         true
+    }.getOrDefault(false)
+
+    // 文件浏览器：独立浮窗；点一下先收起快捷菜单，再由它自己承载界面。
+    QuickMenuTool.FILE_BROWSER -> runCatching {
+        FileBrowserOverlayWindow.show(context, settings)
     }.getOrDefault(false)
 
     else -> false

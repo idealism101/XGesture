@@ -13,6 +13,7 @@ import com.slideindex.app.overlay.OverlayFullScreenPanelHost
 import com.slideindex.app.overlay.OverlayPanelLayoutParams
 import com.slideindex.app.overlay.OverlayViewBackHandler
 import com.slideindex.app.overlay.OverlayWindowTypes
+import com.slideindex.app.overlay.filebrowser.FileBrowserOverlayWindow
 import com.slideindex.app.overlay.PanelSide
 import com.slideindex.app.settings.AppSettings
 import com.slideindex.app.ui.theme.OverlayAwareModuleTheme
@@ -287,11 +288,12 @@ object QuickMenuOverlayWindow {
                     onScanResultsChange = { current.scanResults.value = it },
                     onScanImageChange = { current.scanImage.value = it },
                     onOpenTool = { tool ->
-                        // **预置入口**（前台活动探测、冰箱…）：点一下就直接打开对应面板，并收起本菜单。
-                        // 刻意**不切页**：这类项没有自己的界面，切过去只会留一个空白子页面（真机反馈"何意味"）。
-                        if (quickMenuRunEntry(hostContext, tool)) {
+                        // **预置入口**（前台活动探测、冰箱、文件浏览器…）：点一下就直接打开对应面板，
+                        // 并收起本菜单。刻意**不切页**：这类项没有自己的界面，切过去只会留一个空白子页面。
+                        // 打开失败（无障碍宿主刚断等）时也留在列表页，而不是进入空白子页。
+                        if (quickMenuRunEntry(hostContext, tool, current.settings)) {
                             hideForExternalShare()
-                        } else {
+                        } else if (!tool.opensStandalonePanel) {
                             current.page.value = tool
                             // 乐观更新：先用本地顺序刷 UI，再异步落盘（写失败也不影响本次使用）。
                             current.recents.value = QuickMenuRecentsCodec.record(current.recents.value, tool)
@@ -303,6 +305,14 @@ object QuickMenuOverlayWindow {
                                 if (saved.isNotEmpty()) current.recents.value = saved
                             }
                         }
+                    },
+                    onOpenFileBrowser = { initialPath ->
+                        hideForExternalShare()
+                        FileBrowserOverlayWindow.show(
+                            context = hostContext,
+                            settings = current.settings,
+                            initialPath = initialPath,
+                        )
                     },
                     onBack = { current.page.value = null },
                     onDismiss = { dismiss() },
