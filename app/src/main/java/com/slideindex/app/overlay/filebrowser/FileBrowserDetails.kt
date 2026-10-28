@@ -49,6 +49,8 @@ internal fun FileBrowserDetailsOverlay(
     onOpenWith: (() -> Unit)?,
     openWithLabel: String?,
     openWithEnabled: Boolean,
+    onRename: (() -> Unit)?,
+    onDelete: (() -> Unit)?,
     onClose: () -> Unit,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -165,6 +167,32 @@ internal fun FileBrowserDetailsOverlay(
                                 text = openWithLabel
                                     ?: stringResource(R.string.file_browser_open_with),
                             )
+                        }
+                    }
+                    if (onRename != null || onDelete != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            if (onRename != null) {
+                                OutlinedButton(
+                                    onClick = onRename,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(stringResource(R.string.file_browser_rename))
+                                }
+                            }
+                            if (onDelete != null) {
+                                TextButton(
+                                    onClick = onDelete,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.file_browser_delete),
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            }
                         }
                     }
                 }

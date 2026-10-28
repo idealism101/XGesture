@@ -123,7 +123,17 @@ internal fun FileBrowserPanel(
     var showPathDialog by remember { mutableStateOf(false) }
     var exportBusy by remember { mutableStateOf(false) }
     var exportFailed by remember { mutableStateOf(false) }
+    var nameTarget by remember { mutableStateOf<FileBrowserNameTarget?>(null) }
+    var deleteTarget by remember { mutableStateOf<FileBrowserEntry?>(null) }
+    var operationError by remember { mutableStateOf(false) }
     val actionScope = rememberCoroutineScope()
+
+    LaunchedEffect(operationError) {
+        if (operationError) {
+            delay(1_800L)
+            operationError = false
+        }
+    }
 
     LaunchedEffect(state.details?.path) {
         exportBusy = false
@@ -189,6 +199,7 @@ internal fun FileBrowserPanel(
                             onShowHiddenChange = controller::setShowHidden,
                             onTogglePin = { FileBrowserPreferences.togglePin(state.path) },
                             onOpenPathDialog = { showPathDialog = true },
+                            onNewFolder = { nameTarget = FileBrowserNameTarget.Create(state.path) },
                             onCopyCurrentPath = {
                                 copyToClipboard(context, state.path)
                                 copied = true
@@ -345,6 +356,8 @@ internal fun FileBrowserPanel(
                             },
                             openWithLabel = openWithLabel,
                             openWithEnabled = !exportBusy,
+                            onRename = { nameTarget = FileBrowserNameTarget.Rename(details) },
+                            onDelete = { deleteTarget = details },
                             onClose = controller::hideDetails,
                         )
                     }
@@ -357,6 +370,108 @@ internal fun FileBrowserPanel(
                                 focusManager.clearFocus()
                                 controller.navigateTo(target)
                             },
+                        )
+                    }
+                    nameTarget?.let { target ->
+                        val access = state.access
+                        FileBrowserNameDialog(
+                            initialName = when (target) {
+                                is FileBrowserNameTarget.Create -> ""
+                                is FileBrowserNameTarget.Rename -> target.entry.name
+                            },
+                            title = when (target) {
+                                is FileBrowserNameTarget.Create ->
+                                    stringResource(R.string.file_browser_new_folder)
+                                is FileBrowserNameTarget.Rename ->
+                                    stringResource(R.string.file_browser_rename)
+                            },
+                            onDismiss = { nameTarget = null },
+                            onConfirm = { name ->
+                                nameTarget = null
+                                if (access != null) {
+                                    actionScope.launch {
+                                        val ok = when (target) {
+                                            is FileBrowserNameTarget.Create ->
+                                                FileBrowserWrite.createDirectory(
+                                                    contextPath = target.parent,
+                                                    name = name,
+                                                    access = access,
+                                                )
+                                            is FileBrowserNameTarget.Rename ->
+                                                FileBrowserWrite.rename(
+                                                    path = target.entry.path,
+                                                    newName = name,
+                                                    access = access,
+                                                )
+                                        }
+                                        if (ok) {
+                                            controller.hideDetails()
+                                            controller.refresh()
+                                        } else {
+                                            operationError = true
+                                        }
+                                    }
+                                }
+                            },
+                        )
+                    }
+                    deleteTarget?.let { target ->
+                        val access = state.access
+                        AlertDialog(
+                            onDismissRequest = { deleteTarget = null },
+                            title = { Text(stringResource(R.string.file_browser_delete)) },
+                            text = {
+                                Text(
+                                    stringResource(
+                                        R.string.file_browser_delete_message,
+                                        target.name,
+                                    ),
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        deleteTarget = null
+                                        if (access != null) {
+                                            actionScope.launch {
+                                                val ok = FileBrowserWrite.delete(
+                                                    path = target.path,
+                                                    access = access,
+                                                )
+                                                if (ok) {
+                                                    controller.hideDetails()
+                                                    controller.refresh()
+                                                } else {
+                                                    operationError = true
+                                                }
+                                            }
+                                        }
+                                    },
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.file_browser_delete),
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { deleteTarget = null }) {
+                                    Text(stringResource(R.string.file_browser_cancel))
+                                }
+                            },
+                        )
+                    }
+                    if (operationError) {
+                        Text(
+                            text = stringResource(R.string.file_browser_operation_failed),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 52.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f))
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
                         )
                     }
                 }
@@ -376,6 +491,7 @@ private fun FileBrowserHeader(
     onShowHiddenChange: (Boolean) -> Unit,
     onTogglePin: () -> Unit,
     onOpenPathDialog: () -> Unit,
+    onNewFolder: () -> Unit,
     onCopyCurrentPath: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -504,6 +620,13 @@ private fun FileBrowserHeader(
                     text = { Text(stringResource(R.string.file_browser_jump_path)) },
                     onClick = {
                         onOpenPathDialog()
+                        menuExpanded = false
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.file_browser_new_folder)) },
+                    onClick = {
+                        onNewFolder()
                         menuExpanded = false
                     },
                 )
@@ -838,6 +961,49 @@ private fun copyToClipboard(context: Context, text: String) {
     runCatching {
         manager.setPrimaryClip(ClipData.newPlainText("path", text))
     }
+}
+
+@Composable
+private fun FileBrowserNameDialog(
+    initialName: String,
+    title: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var value by remember(initialName) { mutableStateOf(initialName) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            OutlinedTextField(
+                value = value,
+                onValueChange = { value = it },
+                singleLine = true,
+                label = { Text(stringResource(R.string.file_browser_name_hint)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val name = value.trim()
+                    if (name.isNotEmpty()) onConfirm(name)
+                },
+            ) {
+                Text(stringResource(R.string.file_browser_create))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.file_browser_cancel))
+            }
+        },
+    )
+}
+
+private sealed interface FileBrowserNameTarget {
+    data class Create(val parent: String) : FileBrowserNameTarget
+    data class Rename(val entry: FileBrowserEntry) : FileBrowserNameTarget
 }
 
 @Composable
