@@ -1,5 +1,8 @@
 package com.slideindex.app.overlay
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
@@ -19,6 +22,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -35,8 +39,18 @@ import com.slideindex.app.message.MessageSettings
 import com.slideindex.app.message.NotificationContentGate
 import com.slideindex.app.message.NotificationData
 import com.slideindex.app.message.SideBubbleHorizontalEdge
+import kotlin.coroutines.resume
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
  * 贴边通知卡：贴在屏幕侧缘的一组卡片，每个会话一张。
@@ -131,8 +145,10 @@ object EdgeCardOverlayWindow {
         if (appContext == null || windowManager == null) {
             appContext = hostContext
             windowManager = hostContext.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
-            registerDisplayListener(hostContext)
         }
+        // 每次 show 都确保监听已挂上（幂等）：窗口在更早的 show 里创建过时，上面的 if 不进，
+        // 之前就没有任何回调在旋转后重算 x，表现为卡片停在旧坐标或被推出屏幕。
+        registerDisplayListener(hostContext)
         entries.filter { it.preview }.forEach { removeEntry(it, notifyDismiss = false) }
 
         val existing = entries.firstOrNull { it.matches(plan.data) && !it.preview }
@@ -180,17 +196,20 @@ object EdgeCardOverlayWindow {
 
     /** 设置页预览：示例数据常驻，不自动收起。 */
     fun installPreview(context: Context, settings: MessageSettings) {
+        Log.d(TAG, "installPreview enter main=${Looper.myLooper() == Looper.getMainLooper()}")
         if (Looper.myLooper() != Looper.getMainLooper()) {
             mainHandler.post { installPreview(context, settings) }
             return
         }
-        val hostContext = MessageOverlayHost.resolveHostContext(context) ?: return
-        if (appContext == null || windowManager == null) {
-            appContext = hostContext
-            windowManager = hostContext.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
-            registerDisplayListener(hostContext)
-        }
+        // 必须先清场：dismissAllInternal 会把 windowManager 置空并注销 display 监听，
+        // 之后再取 host / 重新注册，否则 ensureWindow 里 wm == null 会静默 return，预览永远不出现。
         dismissAllInternal(notifyDismiss = false)
+        val hostContext = MessageOverlayHost.resolveHostContext(context)
+        Log.d(TAG, "installPreview host=${hostContext != null} wm=${windowManager != null}")
+        if (hostContext == null) return
+        appContext = hostContext
+        windowManager = hostContext.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+        registerDisplayListener(hostContext)
 
         val appCtx = context.applicationContext
         val appLabel = runCatching {
@@ -228,6 +247,11 @@ object EdgeCardOverlayWindow {
         entry.dismissCallback = {}
         entries.add(entry)
         ensureWindow(entry, hostContext)
+        Log.d(
+            TAG,
+            "installPreview done entries=${entries.size} view=${entry.view != null} " +
+                "params=${entry.params != null}",
+        )
         relayout()
         applyEntry(entry, animated = false)
     }
@@ -317,7 +341,17 @@ object EdgeCardOverlayWindow {
     private fun expandedWidthDp(state: EdgeCardUiState): Float =
         if (state.unreadCount > 1) WIDE_WIDTH_DP else EXPANDED_WIDTH_DP
 
-    private fun screenWidth(): Int = appContext?.resources?.displayMetrics?.widthPixels ?: 0
+    /** 当前屏幕宽度：优先用 display 的实时 metrics，旋转后 resources 里的值可能滞后一帧。 */
+    private fun screenWidth(): Int {
+        val ctx = appContext ?: return 0
+        val display = (ctx.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager)
+            ?.getDisplay(android.view.Display.DEFAULT_DISPLAY)
+        val metrics = android.util.DisplayMetrics()
+        @Suppress("DEPRECATION")
+        display?.getRealMetrics(metrics)
+        val width = metrics.widthPixels
+        return if (width > 0) width else ctx.resources.displayMetrics.widthPixels
+    }
 
     /**
      * 窗口统一用 TOP|START，`params.x` 就是窗口左边缘的屏幕坐标（允许负值、可超出右侧）。
@@ -372,6 +406,7 @@ object EdgeCardOverlayWindow {
 
             private fun onDisplayChanged() {
                 if (entries.isEmpty()) return
+                Log.d(TAG, "display changed: screenW=${screenWidth()} entries=${entries.size}")
                 relayout()
                 entries.toList().forEach { entry -> applyEntry(entry, animated = false) }
             }
@@ -530,6 +565,12 @@ object EdgeCardOverlayWindow {
             entry.params = null
             return
         }
+        Log.d(
+            TAG,
+            "window added key=${entry.key} preview=${entry.preview} " +
+                "x=${params.x} y=${params.y} w=${entry.windowWidthPx} h=${measuredHeight} " +
+                "screenW=${screenWidth()}",
+        )
         view.post { relayout() }
     }
 
@@ -572,6 +613,8 @@ object EdgeCardOverlayWindow {
 
     private fun moveToTop(entry: EdgeCardEntry) {
         if (entries.remove(entry)) entries.add(0, entry)
+        // 顺序变了，堆叠的 y 要重排，否则新卡会压在旧卡的坐标上。
+        relayout()
     }
 
     private fun trimToCount(settings: MessageSettings) {
@@ -847,6 +890,13 @@ private fun placeholderPlan(): MessageDisplayPlan = MessageDisplayPlan(
  * 单张卡片的 View：固定展开宽度，头像 + 两行文字 + 角标。
  * 收起时整窗移出屏幕，内容本身不做任何尺寸或透明度动画。
  */
+private const val SCROLL_HOLD_MIN_MS = 1_200L
+private const val SCROLL_HOLD_PER_LINE_MS = 28L
+private const val SCROLL_HOLD_MAX_MS = 4_500L
+private const val SCROLL_ANIM_MS = 350L
+private const val SCROLL_STEP_PAUSE_MS = 800L
+private const val SCROLL_END_PAUSE_MS = 1_550L
+
 private class EdgeCardView(context: Context) : ViewGroup(context) {
     var exclusionEdge: SideBubbleHorizontalEdge = SideBubbleHorizontalEdge.Right
         set(value) {
@@ -854,13 +904,81 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
             updateGestureExclusion()
         }
 
-    /** 跑马灯仅在展开态启用，收起立即停止，避免常驻滚动耗电。 */
+    /** 动效开关：展开时启用（单行走跑马灯 / 多行走竖向慢滚），收起立即停止并复位。 */
     var marqueeActive: Boolean
         get() = contentView.isSelected
         set(value) {
             if (contentView.isSelected == value) return
             contentView.isSelected = value
+            if (value) startVerticalScroll() else stopVerticalScroll()
         }
+
+    private val scrollScope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
+    private var scrollJob: Job? = null
+    private var scrollAnimator: ValueAnimator? = null
+
+    /**
+     * 多行溢出时的竖向慢滚（对齐悬浮菜单侧边样式）：
+     * 停 4.5s → 350ms 上移一行 → 停 800ms → … 到底停 1.55s 后回顶循环。
+     * 没有溢出、或单行模式时直接返回，不产生任何定时任务。
+     */
+    private fun startVerticalScroll() {
+        stopVerticalScroll()
+        val layout = contentView.layout ?: return
+        if (maxLines <= 1) return
+        val lineHeight = maxOf(contentView.lineHeight, dp(16))
+        val overflowLines = layout.lineCount - maxLines
+        if (overflowLines <= 0 || lineHeight <= 0) return
+        scrollJob = scrollScope.launch {
+            try {
+                while (isActive) {
+                    // 停留时长随行号递增（28ms/行），下界 800ms、上限 4500ms——照抄悬浮菜单。
+                    for (index in 0 until overflowLines) {
+                        if (!isActive) break
+                        val hold = (index.toLong() * SCROLL_HOLD_PER_LINE_MS)
+                            .coerceIn(SCROLL_HOLD_MIN_MS, SCROLL_HOLD_MAX_MS)
+                        delay(hold)
+                        animateScroll(index * lineHeight, (index + 1) * lineHeight)
+                        delay(SCROLL_STEP_PAUSE_MS)
+                    }
+                    delay(SCROLL_END_PAUSE_MS)
+                    contentView.scrollTo(0, 0)
+                }
+            } finally {
+                contentView.scrollTo(0, 0)
+            }
+        }
+    }
+
+    private fun stopVerticalScroll() {
+        scrollJob?.cancel()
+        scrollJob = null
+        scrollAnimator?.cancel()
+        scrollAnimator = null
+        contentView.scrollTo(0, 0)
+    }
+
+    private suspend fun animateScroll(from: Int, to: Int) = suspendCancellableCoroutine { cont ->
+        val animator = ValueAnimator.ofInt(from, to).apply {
+            duration = SCROLL_ANIM_MS
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { contentView.scrollTo(0, it.animatedValue as Int) }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    if (cont.isActive) cont.resume(Unit)
+                }
+            })
+        }
+        scrollAnimator = animator
+        cont.invokeOnCancellation { animator.cancel() }
+        animator.start()
+    }
+
+    override fun onDetachedFromWindow() {
+        stopVerticalScroll()
+        scrollScope.cancel()
+        super.onDetachedFromWindow()
+    }
 
     private var entranceSpring: SpringAnimation? = null
 
@@ -1082,6 +1200,11 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
         // 卡片背景铺满整个窗口，贴边侧才能顶到屏幕边缘。
         setPadding(0, 0, 0, 0)
         requestLayout()
+        // 内容换了之后溢出情况可能变化，展开态下重启竖向滚动。
+        scrollJob?.cancel()
+        scrollJob = null
+        contentView.scrollTo(0, 0)
+        if (contentView.isSelected) startVerticalScroll()
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
