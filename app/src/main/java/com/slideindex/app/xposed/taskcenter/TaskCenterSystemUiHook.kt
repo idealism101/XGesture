@@ -34,17 +34,64 @@ object TaskCenterSystemUiHook {
         }
         systemContext = ctx
         registerReceiver(ctx)
-        TaskCenterLog.i("TaskCenter SystemUI hook installed")
+        TaskCenterLog.i("TaskCenter SystemUI hook installed package=${ctx.packageName}")
+        // 主动回一条 READY：App 侧据此判断"SystemUI 作用域是否生效"。
+        // 没勾作用域时这个钩子根本不会装，App 侧就收不到 READY，能给出可见提示而不是静默失败。
+        notifyReady(ctx)
     }
 
-    /** 与 XGesture 现有 hook 一致的取 Context 方式：ActivityThread.currentActivityThread().getSystemContext()。 */
-    private fun resolveSystemContext(classLoader: ClassLoader): Context? = runCatching {
-        val activityThread = LibXposedReflect.findClass("android.app.ActivityThread", classLoader)
-        val current = LibXposedReflect.callStaticMethod(activityThread, "currentActivityThread")
-        LibXposedReflect.callMethod(current!!, "getSystemContext") as Context
-    }.getOrElse { error ->
-        TaskCenterLog.e("resolveSystemContext failed", error)
-        null
+    /**
+     * 取 SystemUI 进程的 Context。
+     *
+     * **必须优先用 SystemUI 自己的应用 Context（包名 = com.android.systemui）**，原因有二：
+     *
+     * ① 运行时广播接收器的"归属包名"取自注册它的 Context 的包名。App 侧用
+     *    `setPackage("com.android.systemui")` 定向发送，只有用同一个包名注册的 receiver 才会命中；
+     *    用系统 Context（包名 = "android"）注册会让广播被按包名过滤掉，**静默丢弃、没有任何日志**。
+     * ② overlay、PackageManager（图标/应用名）、startActivity 都应当以 SystemUI 的身份发起。
+     *
+     * `ActivityThread.currentActivityThread().getSystemContext()` 返回的是**系统 Context**
+     *（包名 = "android"），只作为最后兜底；优先走 `currentApplication()`。
+     */
+    private fun resolveSystemContext(classLoader: ClassLoader): Context? {
+        val activityThread = runCatching {
+            LibXposedReflect.findClass("android.app.ActivityThread", classLoader)
+        }.getOrNull()
+        if (activityThread == null) {
+            TaskCenterLog.e("Cannot load ActivityThread class; task center hook skipped")
+            return null
+        }
+        // ① SystemUI 应用 Context（包名 = com.android.systemui）—— 正常路径。
+        val application = runCatching {
+            LibXposedReflect.callStaticMethod(activityThread, "currentApplication")
+        }.getOrNull() as? Context
+        if (application != null) {
+            val appContext = runCatching { application.applicationContext }.getOrNull() ?: application
+            TaskCenterLog.i("TaskCenter resolved SystemUI application context package=${appContext.packageName}")
+            return appContext
+        }
+        // ② 钩子装得太早、Application 还没建起来时，退回系统 Context 再造一个
+        //    "com.android.systemui" 包上下文的 Context（归属包名依旧正确）。
+        val systemContext = runCatching {
+            val current = LibXposedReflect.callStaticMethod(activityThread, "currentActivityThread")
+            LibXposedReflect.callMethod(current!!, "getSystemContext") as? Context
+        }.getOrNull()
+        if (systemContext != null) {
+            val packageContext = runCatching {
+                systemContext.createPackageContext(
+                    TaskCenterBroadcastContract.TARGET_PACKAGE,
+                    Context.CONTEXT_IGNORE_SECURITY,
+                )
+            }.getOrNull()
+            if (packageContext != null) {
+                TaskCenterLog.i("TaskCenter resolved SystemUI package context package=${packageContext.packageName}")
+                return packageContext
+            }
+            TaskCenterLog.e("SystemUI application context unavailable; falling back to system context")
+            return systemContext
+        }
+        TaskCenterLog.e("Cannot resolve SystemUI context; task center hook skipped")
+        return null
     }
 
     private fun registerReceiver(context: Context) {
@@ -52,13 +99,14 @@ object TaskCenterSystemUiHook {
         val filter = IntentFilter().apply {
             addAction(TaskCenterBroadcastContract.ACTION_OPEN)
             addAction(TaskCenterBroadcastContract.ACTION_CLOSE)
+            addAction(TaskCenterBroadcastContract.ACTION_PING)
         }
         // 跨进程广播（App → SystemUI），必须 exported。
         // 用 ContextCompat 而不是 Context.RECEIVER_EXPORTED：后者要 API 33，
         // 而本模块 minSdk 是 31，ContextCompat 会按版本补齐（API 26+ 走旧重载）。
         ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
         receiverRegistered = true
-        TaskCenterLog.i("TaskCenter receiver registered")
+        TaskCenterLog.i("TaskCenter receiver registered package=${context.packageName}")
     }
 
     private val receiver = object : BroadcastReceiver() {
@@ -66,8 +114,20 @@ object TaskCenterSystemUiHook {
             when (intent?.action) {
                 TaskCenterBroadcastContract.ACTION_OPEN -> openTaskCenter(intent)
                 TaskCenterBroadcastContract.ACTION_CLOSE -> dismiss()
+                TaskCenterBroadcastContract.ACTION_PING -> notifyReady(context ?: systemContext)
             }
         }
+    }
+
+    /** 回一条 READY，告诉 App 侧"SystemUI 钩子已装好、任务中心可以打开了"。 */
+    private fun notifyReady(context: Context?) {
+        val ctx = context ?: return
+        val intent = Intent(TaskCenterBroadcastContract.ACTION_READY)
+            .setPackage(TaskCenterBroadcastContract.TARGET_APP_PACKAGE)
+            .addFlags(TaskCenterBroadcastContract.FLAG_RECEIVER_INCLUDE_BACKGROUND)
+        runCatching { ctx.sendBroadcast(intent) }
+            .onFailure { TaskCenterLog.e("TaskCenter ready broadcast failed", it) }
+        TaskCenterLog.i("TaskCenter ready sent to ${TaskCenterBroadcastContract.TARGET_APP_PACKAGE}")
     }
 
     private fun openTaskCenter(intent: Intent) {

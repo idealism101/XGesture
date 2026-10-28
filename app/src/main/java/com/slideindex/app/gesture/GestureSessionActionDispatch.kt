@@ -1,5 +1,9 @@
 package com.slideindex.app.gesture
 
+import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
+import com.slideindex.app.R
 import com.slideindex.app.diagnostic.EdgeDiag
 import com.slideindex.app.launcher.QuickLauncherPanelDefaults
 import com.slideindex.app.di.OverlayDependencyAccess
@@ -10,8 +14,14 @@ import com.slideindex.app.overlay.PanelSide
 import com.slideindex.app.settings.actionFor
 import com.slideindex.app.xposed.taskcenter.GestureCorner
 import com.slideindex.app.xposed.taskcenter.TaskCenterBridge
+import com.slideindex.app.xposed.taskcenter.TaskCenterLog
 import com.slideindex.app.settings.resolvedTriggerMode
 import com.slideindex.app.util.ContinuousAdjustController
+
+/** 等待 SystemUI 回 READY 的宽限时间：回执可能刚在路上，立刻判定会误报"作用域没勾"。 */
+private const val SYSTEMUI_READY_GRACE_MS = 700L
+
+private val taskCenterReadyHandler = Handler(Looper.getMainLooper())
 
 /**
  * 把"任务切换"手势重路由到我们的任务中心：跨进程发广播给 SystemUI 钩子，
@@ -27,6 +37,24 @@ internal fun GestureSession.openTaskCenter(anchorX: Float, anchorY: Float) {
                 GestureCorner.RIGHT
             },
         )
+    // 先探活 SystemUI 侧钩子：用户没在 LSPosed 里勾"系统界面"作用域时钩子不会装，
+    // 广播没人收，任务中心表现为"完全没反应"。这里给它一个可见提示，而不是静默失败。
+    TaskCenterBridge.pingSystemUi(ctx)
+    if (!TaskCenterBridge.isSystemUiReady(ctx)) {
+        taskCenterReadyHandler.postDelayed({
+            if (!TaskCenterBridge.isSystemUiReady(ctx)) {
+                TaskCenterLog.i(
+                    "TaskCenter SystemUI hook not ready; enable the System UI scope for XGesture in LSPosed"
+                )
+                Toast.makeText(
+                    ctx,
+                    R.string.task_center_systemui_scope_required,
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }, SYSTEMUI_READY_GRACE_MS)
+    }
+    // 无论就绪与否都照常发 OPEN：探活只是诊断手段，不能因为它失败就不干活。
     TaskCenterBridge.sendOpen(ctx, anchorX, anchorY, corner)
     endSession()
 }

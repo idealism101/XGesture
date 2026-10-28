@@ -4759,4 +4759,5 @@ or revoke permanent Root for Shell in APatch.</string>
     <string name="quick_wheel_slot_save">Save</string>
     <string name="smart_screenshot_saved">Screenshot saved to gallery</string>
     <string name="smart_screenshot_copied">Screenshot copied to clipboard</string>
+    <string name="task_center_systemui_scope_required">Task center unavailable. Enable the System UI scope for XGesture in LSPosed, then restart System UI.</string>
 </resources>

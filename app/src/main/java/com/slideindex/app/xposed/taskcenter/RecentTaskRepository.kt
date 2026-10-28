@@ -12,9 +12,11 @@ import android.graphics.ColorSpace
 import android.hardware.HardwareBuffer
 import android.net.Uri
 import android.os.Bundle
+import android.os.IBinder
 import android.os.UserHandle
 import android.provider.Settings
 import android.text.TextUtils
+import com.slideindex.app.shizuku.SystemReflect
 import java.lang.reflect.Method
 import kotlin.math.roundToInt
 
@@ -29,36 +31,185 @@ class RecentTaskRepository(private val context: Context) {
     private val activityManager: ActivityManager? = context.getSystemService(ActivityManager::class.java)
     private val packageManager: PackageManager = context.packageManager
 
+    /** 系统服务接口的一次查询（不同 ROM 上签名不同，返回结构一样）。 */
+    private data class TaskQuery(val name: String, val call: (Any) -> Any?)
+
     fun loadRunningTasks(maximum: Int, includeSnapshots: Boolean): List<RecentTaskPreview> {
-        val result = ArrayList<RecentTaskPreview>()
-        val am = activityManager ?: return result
         val limit = maximum.coerceIn(2, 10)
-        try {
+        val viaActivityManager = ArrayList<RecentTaskPreview>()
+        val activityManagerSource = loadViaActivityManager(limit, includeSnapshots, viaActivityManager)
+        if (viaActivityManager.isNotEmpty()) {
+            TaskCenterLog.i(
+                "TaskCenter task list source=$activityManagerSource count=${viaActivityManager.size}"
+            )
+            return viaActivityManager
+        }
+        // ActivityManager.getRecentTasks() 只保证返回调用方自己的任务（第三方应用拿不到别人的）。
+        // 本仓库在 SystemUI 进程里调用它，不同 ROM / 不同调用路径并不一致，拿不到就退回
+        // IActivityTaskManager 直接问系统服务要（与仓库既有的 SystemRecentsAccess 同一条通路）。
+        val viaTaskManager = ArrayList<RecentTaskPreview>()
+        val taskManagerSource = loadViaTaskManager(limit, includeSnapshots, viaTaskManager)
+        TaskCenterLog.i(
+            "TaskCenter task list source=$taskManagerSource count=${viaTaskManager.size}"
+        )
+        return viaTaskManager
+    }
+
+    /** 走 ActivityManager 拿任务（拿到什么算什么，返回值即"数据来源"标签）。 */
+    private fun loadViaActivityManager(
+        limit: Int,
+        includeSnapshots: Boolean,
+        out: ArrayList<RecentTaskPreview>,
+    ): String {
+        val am = activityManager ?: return "am.unavailable"
+        return try {
             val recents = am.getRecentTasks(30, ActivityManager.RECENT_IGNORE_UNAVAILABLE)
             for (task in recents) {
-                if (result.size >= limit) break
+                if (out.size >= limit) break
                 if (task == null || task.taskId < 0 || !task.isRunning || task.numActivities <= 0) continue
-                var component = task.topActivity ?: task.baseActivity
-                if (component == null && task.baseIntent != null) component = task.baseIntent.component
+                val component = task.topActivity ?: task.baseActivity ?: task.baseIntent?.component
                 if (component == null) continue
-                val packageName = component.packageName
-                // 排除本模块 / SystemUI / 桌面自身，避免任务中心把自己或桌面列进来。
-                if (EXCLUDED_PACKAGES.contains(packageName)) continue
-                try {
-                    val app = packageManager.getApplicationInfo(packageName, 0)
-                    val label = packageManager.getApplicationLabel(app)
-                    val icon = packageManager.getApplicationIcon(app)
-                    val snapshot = if (includeSnapshots) loadSnapshot(task.taskId) else null
-                    result.add(RecentTaskPreview(task.taskId, packageName, label, snapshot, icon))
-                } catch (itemError: Throwable) {
-                    TaskCenterLog.i("Skipping unavailable recent task package=$packageName err=${itemError.javaClass.simpleName}")
-                }
+                appendPreview(out, task.taskId, component.packageName, includeSnapshots)
             }
+            "am.getRecentTasks"
         } catch (error: Throwable) {
             TaskCenterLog.e("Cannot load running task previews", error)
+            "am.getRecentTasks(error)"
         }
-        TaskCenterLog.i("Running task previews loaded count=${result.size} snapshots=$includeSnapshots")
-        return result
+    }
+
+    /** 走 IActivityTaskManager 系统服务接口拿任务（各签名依次尝试，第一个非空的即采用）。 */
+    private fun loadViaTaskManager(
+        limit: Int,
+        includeSnapshots: Boolean,
+        out: ArrayList<RecentTaskPreview>,
+    ): String {
+        val (source, raw) = rawTasksViaTaskManager(TASK_QUERY_MAX)
+        if (raw.isEmpty()) return source
+        for (item in raw) {
+            if (out.size >= limit) break
+            val taskId = SystemReflect.readInt(item, "getTaskId", "getId", "taskId", "id") ?: continue
+            if (taskId <= 0) continue
+            val component = SystemReflect.readComponent(
+                item,
+                "getTopActivity",
+                "getRealActivity",
+                "getBaseActivity",
+                "getOrigActivity",
+                "topActivity",
+                "realActivity",
+                "baseActivity",
+                "origActivity",
+            )
+                ?: SystemReflect.readComponentFromInfo(item, "topActivityInfo", "baseActivityInfo")
+                ?: (SystemReflect.readField(item, "baseIntent") as? Intent)?.component
+                ?: continue
+            val numActivities = SystemReflect.readInt(item, "getNumActivities", "numActivities") ?: 1
+            if (numActivities <= 0) continue
+            val running = (SystemReflect.invoke(item, "isRunning") as? Boolean)
+                ?: (SystemReflect.readField(item, "isRunning") as? Boolean)
+                ?: true
+            if (!running) continue
+            appendPreview(out, taskId, component.packageName, includeSnapshots)
+        }
+        return source
+    }
+
+    /**
+     * 直接问系统服务要原始任务列表。
+     *
+     * 依次尝试 [ActivityTaskManager.getService]、[ActivityManager.getService]、
+     * `ServiceManager.getService("activity_task")` 三种拿法，再对每个实例按多个签名尝试查询，
+     * 第一个拿到非空列表的即采用。返回 (来源标签, 原始任务列表)。
+     */
+    private fun rawTasksViaTaskManager(maxNum: Int): Pair<String, List<Any>> {
+        for (manager in taskManagerServices()) {
+            for (query in taskManagerQueries(maxNum)) {
+                val raw = runCatching { SystemReflect.unwrapList(query.call(manager)) }.getOrNull() ?: continue
+                if (raw.isEmpty()) continue
+                return query.name to raw
+            }
+        }
+        return "atm.none" to emptyList()
+    }
+
+    /**
+     * 拿 IActivityTaskManager / IActivityManager 的系统服务实例。
+     *
+     * `ActivityManager.getService()` / `ServiceManager.getService()` 都是非 SDK 接口，
+     * 公开 SDK 里查不到。Lint 依据 App 自身的 targetSdk 判为 BlockedPrivateApi（error 级），
+     * 但本类只在 **SystemUI 进程**内使用（见 [TaskCenterSystemUiHook]），SystemUI 是系统应用、
+     * 走 hidden API 白名单豁免，不受 targetSdk 的非 SDK 接口限制影响，故按事实豁免。
+     *
+     * 抑制写法与仓库既有先例一致（见 shizuku/SystemRecentsAccess.taskManagers）。
+     */
+    @SuppressLint("PrivateApi", "BlockedPrivateApi", "SoonBlockedPrivateApi")
+    private fun taskManagerServices(): List<Any> {
+        val managers = LinkedHashSet<Any>()
+        activityTaskManagerService()?.let { managers += it }
+        runCatching {
+            val clazz = Class.forName("android.app.ActivityManager")
+            managers += clazz.getDeclaredMethod("getService").invoke(null)!!
+        }
+        runCatching {
+            val serviceManager = Class.forName("android.os.ServiceManager")
+            val binder = serviceManager.getMethod("getService", String::class.java)
+                .invoke(null, "activity_task") as IBinder
+            val stubClass = Class.forName("android.app.IActivityTaskManager\$Stub")
+            managers += stubClass.getMethod("asInterface", IBinder::class.java).invoke(null, binder)!!
+        }
+        return managers.toList()
+    }
+
+    private fun taskManagerQueries(maxNum: Int): List<TaskQuery> {
+        val callingUid = runCatching { android.os.Process.myUid() }.getOrDefault(0)
+        val callingPackage = context.packageName
+        return listOf(
+            TaskQuery("atm.getRecentTasks6") {
+                SystemReflect.invoke(it, "getRecentTasks", maxNum, RECENT_FLAGS, 0, callingPackage, false, callingUid)
+            },
+            TaskQuery("atm.getRecentTasks3") {
+                SystemReflect.invoke(it, "getRecentTasks", maxNum, RECENT_FLAGS, 0)
+            },
+            TaskQuery("atm.getRecentTasks2") {
+                SystemReflect.invoke(it, "getRecentTasks", maxNum, RECENT_FLAGS)
+            },
+            TaskQuery("atm.getTasks3") {
+                SystemReflect.invoke(it, "getTasks", maxNum, false, false)
+            },
+            TaskQuery("atm.getTasks2") {
+                SystemReflect.invoke(it, "getTasks", maxNum, false)
+            },
+            TaskQuery("atm.getTasksFlags") {
+                SystemReflect.invoke(it, "getTasks", maxNum, RECENT_FLAGS)
+            },
+            TaskQuery("atm.getTasks1") {
+                SystemReflect.invoke(it, "getTasks", maxNum)
+            },
+        )
+    }
+
+    /** 把一条任务转成列表项（取图标 / 应用名 / 快照），单项失败不影响整张列表。 */
+    private fun appendPreview(
+        out: ArrayList<RecentTaskPreview>,
+        taskId: Int,
+        packageName: String,
+        includeSnapshots: Boolean,
+    ) {
+        // 排除本模块 / SystemUI / 桌面自身，避免任务中心把自己或桌面列进来。
+        if (EXCLUDED_PACKAGES.contains(packageName)) return
+        try {
+            val app = packageManager.getApplicationInfo(packageName, 0)
+            val label = packageManager.getApplicationLabel(app)
+            val icon = packageManager.getApplicationIcon(app)
+            // 快照拿不到就留空，绝不让整个列表失败。
+            val snapshot = if (includeSnapshots) loadSnapshot(taskId) else null
+            out.add(RecentTaskPreview(taskId, packageName, label, snapshot, icon))
+        } catch (itemError: Throwable) {
+            TaskCenterLog.i(
+                "Skipping unavailable recent task package=$packageName err=${itemError.javaClass.simpleName}"
+            )
+        }
     }
 
     fun release(previews: List<RecentTaskPreview>?) {
@@ -70,15 +221,25 @@ class RecentTaskRepository(private val context: Context) {
 
     /** 列表打开瞬间的前台任务 id（分屏时填到另一侧 stage 用）。 */
     fun foregroundTaskId(): Int {
-        val am = activityManager ?: return -1
-        try {
-            val recents = am.getRecentTasks(5, ActivityManager.RECENT_IGNORE_UNAVAILABLE)
-            for (task in recents) {
-                if (task == null || task.taskId < 0 || !task.isRunning || task.numActivities <= 0) continue
-                return task.taskId
+        val am = activityManager
+        if (am != null) {
+            try {
+                val recents = am.getRecentTasks(5, ActivityManager.RECENT_IGNORE_UNAVAILABLE)
+                for (task in recents) {
+                    if (task == null || task.taskId < 0 || !task.isRunning || task.numActivities <= 0) continue
+                    return task.taskId
+                }
+            } catch (error: Throwable) {
+                TaskCenterLog.i("Cannot read foreground task id err=${error.javaClass.simpleName}")
             }
-        } catch (error: Throwable) {
-            TaskCenterLog.i("Cannot read foreground task id err=${error.javaClass.simpleName}")
+        }
+        // 兜底：ActivityManager 拿不到时走系统服务接口。
+        val (_, raw) = rawTasksViaTaskManager(TASK_QUERY_MAX)
+        for (item in raw) {
+            val taskId = SystemReflect.readInt(item, "getTaskId", "getId", "taskId", "id") ?: continue
+            if (taskId <= 0) continue
+            TaskCenterLog.i("Foreground task id resolved via task manager id=$taskId")
+            return taskId
         }
         return -1
     }
@@ -219,6 +380,16 @@ class RecentTaskRepository(private val context: Context) {
             "com.miui.home",
         )
 
+        /** 一次向系统服务要多少条任务。 */
+        private const val TASK_QUERY_MAX = 40
+
+        /** AOSP 的 RECENT_WITH_EXCLUDED / RECENT_IGNORE_UNAVAILABLE / RECENT_INCLUDE_PROFILES。 */
+        private const val RECENT_WITH_EXCLUDED = 0x0001
+        private const val RECENT_IGNORE_UNAVAILABLE = 0x0002
+        private const val RECENT_INCLUDE_PROFILES = 0x0004
+        private const val RECENT_FLAGS =
+            RECENT_WITH_EXCLUDED or RECENT_IGNORE_UNAVAILABLE or RECENT_INCLUDE_PROFILES
+
         /** 反射调用目标方法，沿父类向上查找（标准库，不依赖 Xposed）。 */
         fun invoke(target: Any?, method: String, vararg args: Any?): Any? {
             if (target == null) return null
@@ -259,7 +430,7 @@ class RecentTaskRepository(private val context: Context) {
          *
          * Lint 依据 App 自身的 targetSdk 判为 BlockedPrivateApi，此处按事实豁免。
          */
-        @SuppressLint("BlockedPrivateApi")
+        @SuppressLint("PrivateApi", "BlockedPrivateApi", "SoonBlockedPrivateApi")
         private fun activityTaskManagerService(): Any? = try {
             val manager = Class.forName("android.app.ActivityTaskManager")
             val getService = manager.getDeclaredMethod("getService")

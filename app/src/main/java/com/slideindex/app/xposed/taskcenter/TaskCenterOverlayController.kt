@@ -59,10 +59,37 @@ class TaskCenterOverlayController(
         val next = createListSurface(tasks, corner, anchorX, anchorY, config, listener, lockedApps)
         TaskCenterLog.i("TaskCenter surface creating tasks=${tasks.size}")
         val height = windowManager.getCurrentWindowMetrics().bounds.height()
+        var lastError: Throwable? = null
+        // 窗口类型：优先 2038（APPLICATION_OVERLAY）。
+        // 在 SystemUI 进程里若因权限 / 归属被 WindowManager 拒绝，退回 2024
+        // （NAVIGATION_BAR_PANEL，SystemUI 内部窗口类型）——FanFreeform 在真机上验证过的路径。
+        for (type in WINDOW_TYPES) {
+            val params = buildLayoutParams(height, type)
+            try {
+                windowManager.addView(next as View, params)
+                view = next
+                attached = true
+                next.playEntry()
+                return true
+            } catch (error: Throwable) {
+                lastError = error
+                TaskCenterLog.i(
+                    "TaskCenter attach failed type=$type err=${error.javaClass.simpleName}"
+                )
+            }
+        }
+        TaskCenterLog.e("Cannot attach task center", lastError)
+        next.releaseResources()
+        view = null
+        attached = false
+        return false
+    }
+
+    private fun buildLayoutParams(height: Int, type: Int): LayoutParams {
         val params = LayoutParams(
             LayoutParams.MATCH_PARENT,
             height,
-            2038,
+            type,
             LayoutParams.FLAG_LAYOUT_IN_SCREEN
                 or LayoutParams.FLAG_NOT_FOCUSABLE
                 or LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
@@ -73,19 +100,7 @@ class TaskCenterOverlayController(
         params.setFitInsetsTypes(0)
         params.setTitle("SlideIndexTaskCenter")
         params.layoutInDisplayCutoutMode = LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-        try {
-            windowManager.addView(next as View, params)
-            view = next
-            attached = true
-            next.playEntry()
-            return true
-        } catch (error: Throwable) {
-            TaskCenterLog.e("Cannot attach task center", error)
-            next.releaseResources()
-            view = null
-            attached = false
-            return false
-        }
+        return params
     }
 
     private fun createListSurface(
@@ -262,5 +277,17 @@ class TaskCenterOverlayController(
             if (pendingMoveView == current) pendingMoveView = null
             moveFrameScheduled = false
         }
+    }
+
+    companion object {
+        /**
+         * 窗口类型候选：优先 2038（APPLICATION_OVERLAY），失败退回 2024
+         * （NAVIGATION_BAR_PANEL，SystemUI 内部窗口类型，挂载时不需要额外权限）。
+         */
+        private val WINDOW_TYPES = intArrayOf(
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            // TYPE_NAVIGATION_BAR_PANEL 是 @hide 常量，公开 SDK 里查不到；各 ROM 上值固定为 2024。
+            2024,
+        )
     }
 }
