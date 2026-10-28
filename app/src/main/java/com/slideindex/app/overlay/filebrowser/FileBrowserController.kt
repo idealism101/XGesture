@@ -49,7 +49,20 @@ internal class FileBrowserController(
         private set
 
     init {
-        FileBrowserPreferences.attach(context)
+        FileBrowserPreferences.attach(context) { prefs ->
+            scope.launch {
+                if (state.path != dataSource.initialPath()) return@launch
+                val last = prefs.lastPath ?: return@launch
+                val target = FileBrowserPaths.normalize(last, internalRoot)
+                if (target == state.path) return@launch
+                state = state.copy(
+                    path = target,
+                    showHidden = prefs.showHidden,
+                    sort = prefs.sortOrderOrDefault(),
+                )
+                reload()
+            }
+        }
         val prefs = FileBrowserPreferences.current
         state = FileBrowserUiState(
             path = FileBrowserPaths.normalize(

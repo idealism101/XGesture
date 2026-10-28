@@ -43,13 +43,21 @@ internal object FileBrowserPreferences {
     private var appContext: Context? = null
     private var loaded = false
 
-    fun attach(context: Context) {
+    fun attach(
+        context: Context,
+        onLoaded: ((FileBrowserPrefs) -> Unit)? = null,
+    ) {
         appContext = context.applicationContext
-        if (loaded) return
+        if (loaded) {
+            onLoaded?.invoke(current)
+            return
+        }
         loaded = true
         val ctx = context.applicationContext
         scope.launch {
-            current = read(ctx)
+            val prefs = read(ctx)
+            current = prefs
+            onLoaded?.invoke(prefs)
         }
     }
 
