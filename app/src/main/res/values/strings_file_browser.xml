@@ -84,4 +84,9 @@
     <string name="file_browser_category_music">Music</string>
     <string name="file_browser_category_videos">Videos</string>
     <string name="file_browser_category_documents">Documents</string>
+    <string name="file_browser_jump_path">Go to path</string>
+    <string name="file_browser_jump_hint">Absolute path, e.g. /data/data</string>
+    <string name="file_browser_go">Go</string>
+    <string name="file_browser_cancel">Cancel</string>
+    <string name="file_browser_open_with">Open with…</string>
 </resources>

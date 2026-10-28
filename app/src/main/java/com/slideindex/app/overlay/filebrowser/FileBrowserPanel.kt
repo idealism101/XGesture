@@ -45,6 +45,7 @@ import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -52,6 +53,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -116,6 +118,7 @@ internal fun FileBrowserPanel(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     var copied by remember { mutableStateOf(false) }
+    var showPathDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.path) {
         runCatching { listState.scrollToItem(0) }
@@ -175,6 +178,7 @@ internal fun FileBrowserPanel(
                             onSortSelected = controller::setSort,
                             onShowHiddenChange = controller::setShowHidden,
                             onTogglePin = { FileBrowserPreferences.togglePin(state.path) },
+                            onOpenPathDialog = { showPathDialog = true },
                             onCopyCurrentPath = {
                                 copyToClipboard(context, state.path)
                                 copied = true
@@ -275,6 +279,7 @@ internal fun FileBrowserPanel(
 
                     val details = state.details
                     if (details != null) {
+                        val openWithTitle = stringResource(R.string.file_browser_open_with)
                         FileBrowserDetailsOverlay(
                             entry = details,
                             copied = copied,
@@ -282,7 +287,29 @@ internal fun FileBrowserPanel(
                                 copyToClipboard(context, details.path)
                                 copied = true
                             },
+                            onOpenWith = if (FileBrowserOpen.canOpen(details.path)) {
+                                {
+                                    FileBrowserOpen.open(
+                                        context = context,
+                                        path = details.path,
+                                        chooserTitle = openWithTitle,
+                                    )
+                                }
+                            } else {
+                                null
+                            },
                             onClose = controller::hideDetails,
+                        )
+                    }
+                    if (showPathDialog) {
+                        FileBrowserPathDialog(
+                            initialPath = state.path,
+                            onDismiss = { showPathDialog = false },
+                            onNavigate = { target ->
+                                showPathDialog = false
+                                focusManager.clearFocus()
+                                controller.navigateTo(target)
+                            },
                         )
                     }
                 }
@@ -301,6 +328,7 @@ private fun FileBrowserHeader(
     onSortSelected: (FileSortOrder) -> Unit,
     onShowHiddenChange: (Boolean) -> Unit,
     onTogglePin: () -> Unit,
+    onOpenPathDialog: () -> Unit,
     onCopyCurrentPath: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -422,6 +450,13 @@ private fun FileBrowserHeader(
                     text = { Text(stringResource(R.string.file_browser_copy_current_path)) },
                     onClick = {
                         onCopyCurrentPath()
+                        menuExpanded = false
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.file_browser_jump_path)) },
+                    onClick = {
+                        onOpenPathDialog()
                         menuExpanded = false
                     },
                 )
@@ -756,4 +791,41 @@ private fun copyToClipboard(context: Context, text: String) {
     runCatching {
         manager.setPrimaryClip(ClipData.newPlainText("path", text))
     }
+}
+
+@Composable
+private fun FileBrowserPathDialog(
+    initialPath: String,
+    onDismiss: () -> Unit,
+    onNavigate: (String) -> Unit,
+) {
+    var value by remember(initialPath) { mutableStateOf(initialPath) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.file_browser_jump_path)) },
+        text = {
+            OutlinedTextField(
+                value = value,
+                onValueChange = { value = it },
+                singleLine = true,
+                label = { Text(stringResource(R.string.file_browser_jump_hint)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val target = value.trim()
+                    if (target.isNotEmpty()) onNavigate(target)
+                },
+            ) {
+                Text(stringResource(R.string.file_browser_go))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.file_browser_cancel))
+            }
+        },
+    )
 }

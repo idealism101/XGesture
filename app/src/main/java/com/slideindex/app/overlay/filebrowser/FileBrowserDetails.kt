@@ -25,6 +25,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,6 +46,7 @@ internal fun FileBrowserDetailsOverlay(
     entry: FileBrowserEntry,
     copied: Boolean,
     onCopy: () -> Unit,
+    onOpenWith: (() -> Unit)?,
     onClose: () -> Unit,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -150,6 +152,14 @@ internal fun FileBrowserDetailsOverlay(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(stringResource(R.string.file_browser_close))
+                    }
+                    if (onOpenWith != null) {
+                        OutlinedButton(
+                            onClick = onOpenWith,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.file_browser_open_with))
+                        }
                     }
                 }
             }

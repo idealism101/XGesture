@@ -84,4 +84,9 @@
     <string name="file_browser_category_music">音乐</string>
     <string name="file_browser_category_videos">视频</string>
     <string name="file_browser_category_documents">文档</string>
+    <string name="file_browser_jump_path">跳转到路径</string>
+    <string name="file_browser_jump_hint">绝对路径，例如 /data/data</string>
+    <string name="file_browser_go">跳转</string>
+    <string name="file_browser_cancel">取消</string>
+    <string name="file_browser_open_with">用其他应用打开</string>
 </resources>
