@@ -8,6 +8,7 @@ import com.slideindex.app.shake.FaceDownGestureSettings
 import com.slideindex.app.shake.ShakeGestureCodec
 import com.slideindex.app.shake.ShakeGestureType
 import com.slideindex.app.shake.ShakeSensitivityScale
+import com.slideindex.app.shake.ShakeWorkMode
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,6 +18,10 @@ class ShakeSettingsMutator @Inject constructor(
 ) {
     suspend fun setShakeGesturesEnabled(enabled: Boolean) = editor.edit { it[SettingsPreferenceKeys.SHAKE_GESTURES_ENABLED] = enabled }
 
+    suspend fun setShakeWorkMode(mode: ShakeWorkMode) = editor.edit {
+        it[SettingsPreferenceKeys.SHAKE_WORK_MODE] = mode.storageId
+    }
+
     suspend fun setShakeGestureAction(type: ShakeGestureType, action: GestureAction) = editor.edit { prefs ->
         val current = SettingsSnapshotReader.readShakeGestureSettings(prefs)
         val updated = current.basicActions.toMutableMap().apply { put(type, action) }
@@ -24,6 +29,10 @@ class ShakeSettingsMutator @Inject constructor(
     }
 
     suspend fun setLockScreenShakeAction(type: ShakeGestureType, action: GestureAction) = editor.edit { prefs ->
+        // 用户一旦编辑锁屏动作，就切到新模型：未设置的项按“无”处理，不再回退。
+        if (prefs[SettingsPreferenceKeys.SHAKE_WORK_MODE] == null) {
+            prefs[SettingsPreferenceKeys.SHAKE_WORK_MODE] = ShakeWorkMode.UNLOCKED.storageId
+        }
         val current = SettingsSnapshotReader.readShakeGestureSettings(prefs)
         val updated = current.lockScreenActions.toMutableMap().apply { put(type, action) }
         prefs[SettingsPreferenceKeys.SHAKE_LOCK_SCREEN_ACTIONS] = ShakeGestureCodec.encodeAllActions(updated)
@@ -62,8 +71,6 @@ class ShakeSettingsMutator @Inject constructor(
         prefs[SettingsPreferenceKeys.SHAKE_SENSITIVITY_V3_MIGRATED] = true
         prefs[SettingsPreferenceKeys.SHAKE_PER_DIRECTION_SENSITIVITY] = ShakeGestureCodec.encodePerDirectionSensitivity(updated)
     }
-
-    suspend fun setLockScreenShakeEnabled(enabled: Boolean) = editor.edit { it[SettingsPreferenceKeys.LOCK_SCREEN_SHAKE_ENABLED] = enabled }
 
     suspend fun setIndependentAppShakeEnabled(enabled: Boolean) =
         editor.edit { it[SettingsPreferenceKeys.INDEPENDENT_APP_SHAKE_ENABLED] = enabled }

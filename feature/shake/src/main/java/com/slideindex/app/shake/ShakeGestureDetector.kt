@@ -18,6 +18,7 @@ class ShakeGestureDetector(
 ) {
 
     val isAvailable: Boolean get() = sensorHub.hasGyroscope || sensorHub.hasAccelerometer
+    val isRunning: Boolean get() = listenerRegistered
 
     private var useAccelerometer = false
     private var globalSensitivity = 6.0f
@@ -71,6 +72,18 @@ class ShakeGestureDetector(
         lastTriggerTime = 0L
         lastDirection = null
         accelReady = false
+    }
+
+    /**
+     * 重新注册传感器。部分机型息屏后会挂起非唤醒传感器（加速度计/陀螺仪），
+     * 重新注册可以恢复采样；屏幕状态切换时调用。
+     */
+    @Synchronized
+    fun restartSensor() {
+        if (!listenerRegistered) return
+        sensorHub.unregister(this)
+        listenerRegistered = false
+        start()
     }
 
     @Synchronized

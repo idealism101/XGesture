@@ -424,6 +424,7 @@ internal object SettingsPreferenceKeys {
     val GESTURE_PROFILES = stringSetPreferencesKey("gesture_profiles")
     val INDEPENDENT_APP_GESTURE_ENABLED = booleanPreferencesKey("gesture_independent_app_enabled")
     val SHAKE_GESTURES_ENABLED = booleanPreferencesKey("shake_gestures_enabled")
+    val SHAKE_WORK_MODE = intPreferencesKey("shake_work_mode")
     val SHAKE_GESTURE_ACTIONS = stringSetPreferencesKey("shake_gesture_actions")
     val SHAKE_MENU_ACTIONS = stringSetPreferencesKey("shake_menu_actions")
     val SHAKE_HOLD_SCREEN_ACTIONS = stringSetPreferencesKey("shake_hold_screen_actions")
@@ -433,6 +434,8 @@ internal object SettingsPreferenceKeys {
     val SHAKE_PER_DIRECTION_SENSITIVITY = stringSetPreferencesKey("shake_per_direction_sensitivity")
     val SHAKE_MENU_ENABLED = booleanPreferencesKey("shake_menu_enabled")
     val HOLD_SHAKE_ENABLED = booleanPreferencesKey("hold_shake_enabled")
+
+    /** 旧版“锁屏晃动”总开关，仅用于迁移到 [SHAKE_WORK_MODE] + 锁屏动作“无=关闭”的新模型。 */
     val LOCK_SCREEN_SHAKE_ENABLED = booleanPreferencesKey("lock_screen_shake_enabled")
     val INDEPENDENT_APP_SHAKE_ENABLED = booleanPreferencesKey("independent_app_shake_enabled")
     val SHAKE_GLOBAL_SENSITIVITY = floatPreferencesKey("shake_global_sensitivity")
