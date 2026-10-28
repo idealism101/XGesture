@@ -20,8 +20,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.Android
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Movie
+import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.Icon
@@ -159,7 +163,53 @@ internal fun FileBrowserQuickCard(
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(6.dp))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 1.dp),
+        ) {
+            items(categories(internalRoot), key = { it.path }) { category ->
+                FileBrowserPinChip(
+                    label = stringResource(category.labelRes),
+                    icon = category.icon,
+                    onClick = { onOpen(category.path) },
+                )
+            }
+        }
     }
+}
+
+private data class FileBrowserCategory(
+    val labelRes: Int,
+    val path: String,
+    val icon: ImageVector,
+)
+
+private fun categories(internalRoot: String): List<FileBrowserCategory> {
+    val root = FileBrowserPaths.normalize(internalRoot, internalRoot)
+    return listOf(
+        FileBrowserCategory(
+            R.string.file_browser_category_pictures,
+            "$root/Pictures",
+            Icons.Outlined.Image,
+        ),
+        FileBrowserCategory(
+            R.string.file_browser_category_music,
+            "$root/Music",
+            Icons.Outlined.MusicNote,
+        ),
+        FileBrowserCategory(
+            R.string.file_browser_category_videos,
+            "$root/Movies",
+            Icons.Outlined.Movie,
+        ),
+        FileBrowserCategory(
+            R.string.file_browser_category_documents,
+            "$root/Documents",
+            Icons.Outlined.Description,
+        ),
+    )
 }
 
 @Composable

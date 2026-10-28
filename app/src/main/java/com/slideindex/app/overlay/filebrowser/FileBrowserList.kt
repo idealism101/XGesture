@@ -1,5 +1,7 @@
 package com.slideindex.app.overlay.filebrowser
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -44,10 +46,17 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -115,6 +124,17 @@ private fun FileBrowserEntryRow(
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
+    var thumbnail by remember(entry.path, entry.modifiedEpochSeconds) {
+        mutableStateOf<Bitmap?>(null)
+    }
+    LaunchedEffect(entry.path, entry.modifiedEpochSeconds, fileKind) {
+        if (fileKind == FileKind.IMAGE) {
+            thumbnail = FileBrowserThumbnailLoader.load(
+                path = entry.path,
+                modifiedEpochSeconds = entry.modifiedEpochSeconds,
+            )
+        }
+    }
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -131,12 +151,22 @@ private fun FileBrowserEntryRow(
                     .background(tint.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector = iconFor(fileKind),
-                    contentDescription = null,
-                    tint = tint,
-                    modifier = Modifier.size(22.dp),
-                )
+                val bitmap = thumbnail
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    Icon(
+                        imageVector = iconFor(fileKind),
+                        contentDescription = null,
+                        tint = tint,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {

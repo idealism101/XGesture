@@ -80,4 +80,8 @@
     <string name="file_browser_size_calculating">正在计算…</string>
     <string name="file_browser_size_unavailable">无法计算</string>
     <string name="file_browser_compute_size">计算大小</string>
+    <string name="file_browser_category_pictures">图片</string>
+    <string name="file_browser_category_music">音乐</string>
+    <string name="file_browser_category_videos">视频</string>
+    <string name="file_browser_category_documents">文档</string>
 </resources>

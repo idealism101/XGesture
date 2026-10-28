@@ -80,4 +80,8 @@
     <string name="file_browser_size_calculating">Calculating…</string>
     <string name="file_browser_size_unavailable">unavailable</string>
     <string name="file_browser_compute_size">Size</string>
+    <string name="file_browser_category_pictures">Pictures</string>
+    <string name="file_browser_category_music">Music</string>
+    <string name="file_browser_category_videos">Videos</string>
+    <string name="file_browser_category_documents">Documents</string>
 </resources>
