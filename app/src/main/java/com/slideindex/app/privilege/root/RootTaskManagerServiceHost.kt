@@ -500,7 +500,20 @@ object RootTaskManagerServiceHost {
 
             append("CLASSPATH=").append(apk).append(' ')
 
-            append("exec app_process /system/bin ").append(mainClass).append(' ')
+            if (RootNamespace.isUsable()) {
+
+                // 必须从 init 的 mount namespace 启动：否则 /data/data 只剩本 App 的 tmpfs 桩。
+                append("exec ").append(RootNamespace.NSENTER_PATH).append(" -t 1 -m -- ")
+
+                append("/system/bin/app_process")
+
+            } else {
+
+                append("exec app_process")
+
+            }
+
+            append(" /system/bin ").append(mainClass).append(' ')
 
             append(TaskManagerShellExecutor.shellQuote(pkg))
 

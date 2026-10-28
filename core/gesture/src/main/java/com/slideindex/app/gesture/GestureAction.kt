@@ -187,6 +187,9 @@ enum class GestureActionType(val id: Int) {
 
     /** 「切换晃动手势」：把晃动页的总开关取反，可作为任意手势/槽位的动作。 */
     TOGGLE_SHAKE_GESTURE(106),
+
+    /** 「文件浏览器」：打开独立浮窗，支持系统根目录 / Android/data / Root 数据目录。 */
+    FILE_BROWSER(107),
     ;
 
     companion object {
@@ -539,6 +542,12 @@ sealed class GestureAction {
     /** Opens the search panel overlay with text/image search. */
     data object SearchPanel : GestureAction() {
         override val type = GestureActionType.SEARCH_PANEL
+        override val payload = ""
+    }
+
+    /** Opens the standalone file browser overlay. */
+    data object FileBrowser : GestureAction() {
+        override val type = GestureActionType.FILE_BROWSER
         override val payload = ""
     }
 
@@ -1168,6 +1177,7 @@ sealed class GestureAction {
                 GestureActionType.FULLSCREEN_SCREENSHOT_PICK -> FullscreenScreenshotPick
                 GestureActionType.REGIONAL_SCREENSHOT_PICK -> RegionalScreenshotPick
                 GestureActionType.SEARCH_PANEL -> SearchPanel
+                GestureActionType.FILE_BROWSER -> FileBrowser
                 GestureActionType.POWER_MENU -> PowerMenu
                 GestureActionType.KEEP_SCREEN_ON -> KeepScreenOn
                 GestureActionType.SCROLL_TO_TOP -> ScrollToTop

@@ -2,6 +2,7 @@ package com.slideindex.app.shizuku
 
 import android.os.SystemClock
 import android.util.Log
+import com.slideindex.app.privilege.root.RootNamespace
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.OutputStreamWriter
@@ -57,9 +58,19 @@ internal object RootShellSession {
     }
 
     private fun openSession(): Boolean {
+        val sh = TaskManagerShellExecutor.resolveShPath()
+        val globalLauncher = RootNamespace.shellLauncher(sh)
+        if (tryOpenSession(globalLauncher)) return true
+        // 某些 ROM 没有可用的 nsenter：不能因此让整个 Root 模式不可用，退回普通 shell。
+        if (globalLauncher != sh) {
+            return tryOpenSession(sh)
+        }
+        return false
+    }
+
+    private fun tryOpenSession(shellCommand: String): Boolean {
         return runCatching {
             val su = TaskManagerShellExecutor.resolveSuInvocation()
-            val sh = TaskManagerShellExecutor.resolveShPath()
             val proc = ProcessBuilder(su)
                 .redirectErrorStream(true)
                 .directory(java.io.File("/"))
@@ -69,7 +80,7 @@ internal object RootShellSession {
                 .start()
             val outputWriter = BufferedWriter(OutputStreamWriter(proc.outputStream))
             val inputReader = proc.inputStream.bufferedReader()
-            outputWriter.write("$sh\n")
+            outputWriter.write("$shellCommand\n")
             outputWriter.flush()
             drainStartup(inputReader, 250L)
             process = proc
@@ -140,8 +151,15 @@ internal object RootShellSession {
 
     private fun runOneShot(command: String, timeoutMs: Long): TaskManagerShellExecutor.ShellExecResult {
         val su = TaskManagerShellExecutor.resolveSuInvocation()
-        val q = TaskManagerShellExecutor.shellQuote(command)
         val sh = TaskManagerShellExecutor.resolveShPath()
+        // 常驻 shell 没起来时也不能丢全局 namespace；用 nsenter 包一层再交给 su。
+        val effective = if (RootNamespace.nsenterBinaryExists()) {
+            "${RootNamespace.NSENTER_PATH} -t 1 -m -- $sh -c " +
+                TaskManagerShellExecutor.shellQuote(command)
+        } else {
+            command
+        }
+        val q = TaskManagerShellExecutor.shellQuote(effective)
         val scripts = listOf(
             "$su -c $q",
             "$su 0 sh -c $q"

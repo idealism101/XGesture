@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.slideindex.app.R
 import com.slideindex.app.barcode.BarcodeScanResult
+import com.slideindex.app.overlay.filebrowser.FileBrowserQuickCard
 import top.yukonga.miuix.kmp.icon.extended.Close
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 
@@ -86,6 +87,7 @@ fun QuickMenuPanel(
     onScanResultsChange: (List<BarcodeScanResult>) -> Unit,
     onScanImageChange: (Bitmap?) -> Unit,
     onOpenTool: (QuickMenuTool) -> Unit,
+    onOpenFileBrowser: (String?) -> Unit,
     onBack: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -127,6 +129,7 @@ fun QuickMenuPanel(
                 Column(modifier = Modifier.fillMaxSize()) {
                     if (page == null) {
                         ListHeader(onDismiss = onDismiss)
+                        FileBrowserQuickCard(onOpen = onOpenFileBrowser)
                         OutlinedTextField(
                             value = query,
                             onValueChange = onQueryChange,

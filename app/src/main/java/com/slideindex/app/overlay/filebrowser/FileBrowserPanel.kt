@@ -107,6 +107,11 @@ internal fun FileBrowserPanel(
         )
     }
     val listState = rememberLazyListState()
+    val levelBytes = remember(state.entries) {
+        state.entries.asSequence()
+            .filter { it.kind != FileEntryKind.DIRECTORY }
+            .sumOf { it.sizeBytes }
+    }
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     var copied by remember { mutableStateOf(false) }
@@ -164,9 +169,11 @@ internal fun FileBrowserPanel(
                             access = state.access,
                             showHidden = state.showHidden,
                             sort = state.sort,
+                            pinned = FileBrowserPreferences.isPinned(state.path),
                             onRefresh = controller::refresh,
                             onSortSelected = controller::setSort,
                             onShowHiddenChange = controller::setShowHidden,
+                            onTogglePin = { FileBrowserPreferences.togglePin(state.path) },
                             onCopyCurrentPath = {
                                 copyToClipboard(context, state.path)
                                 copied = true
@@ -241,6 +248,9 @@ internal fun FileBrowserPanel(
                         if (state.error == null && (filtered.isNotEmpty() || state.truncated)) {
                             FileBrowserFooter(
                                 count = filtered.size,
+                                sizeBytes = levelBytes,
+                                directorySizeBytes = state.directorySizeBytes,
+                                directorySizeLoading = state.directorySizeLoading,
                                 truncated = state.truncated,
                             )
                         }
@@ -283,9 +293,11 @@ private fun FileBrowserHeader(
     access: FileBrowserAccessInfo?,
     showHidden: Boolean,
     sort: FileSortOrder,
+    pinned: Boolean,
     onRefresh: () -> Unit,
     onSortSelected: (FileSortOrder) -> Unit,
     onShowHiddenChange: (Boolean) -> Unit,
+    onTogglePin: () -> Unit,
     onCopyCurrentPath: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -407,6 +419,23 @@ private fun FileBrowserHeader(
                     text = { Text(stringResource(R.string.file_browser_copy_current_path)) },
                     onClick = {
                         onCopyCurrentPath()
+                        menuExpanded = false
+                    },
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            stringResource(
+                                if (pinned) {
+                                    R.string.file_browser_unpin_current
+                                } else {
+                                    R.string.file_browser_pin_current
+                                },
+                            ),
+                        )
+                    },
+                    onClick = {
+                        onTogglePin()
                         menuExpanded = false
                     },
                 )
@@ -605,6 +634,9 @@ private fun FileBrowserQuickChips(
 @Composable
 private fun FileBrowserFooter(
     count: Int,
+    sizeBytes: Long,
+    directorySizeBytes: Long?,
+    directorySizeLoading: Boolean,
     truncated: Boolean,
 ) {
     HorizontalDivider(
@@ -617,8 +649,25 @@ private fun FileBrowserFooter(
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val footerText = when {
+            directorySizeLoading -> stringResource(
+                R.string.file_browser_footer_count_size,
+                count,
+                stringResource(R.string.file_browser_size_calculating),
+            )
+            directorySizeBytes != null -> stringResource(
+                R.string.file_browser_footer_count_directory,
+                count,
+                FileBrowserFormat.size(directorySizeBytes),
+            )
+            else -> stringResource(
+                R.string.file_browser_footer_count_size,
+                count,
+                FileBrowserFormat.size(sizeBytes),
+            )
+        }
         Text(
-            text = stringResource(R.string.file_browser_item_count, count),
+            text = footerText,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

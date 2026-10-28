@@ -23,6 +23,8 @@ data class FileBrowserUiState(
     val access: FileBrowserAccessInfo? = null,
     val limited: Boolean = false,
     val truncated: Boolean = false,
+    val directorySizeBytes: Long? = null,
+    val directorySizeLoading: Boolean = false,
 )
 
 /**
@@ -37,6 +39,7 @@ internal class FileBrowserController(
 ) {
     private val dataSource = FileBrowserDataSource(context)
     private var loadJob: Job? = null
+    private var sizeJob: Job? = null
 
     val internalRoot: String get() = dataSource.internalRoot
 
@@ -45,11 +48,33 @@ internal class FileBrowserController(
     )
         private set
 
-    /** 面板重新可见：清掉搜索词/详情，保留路径与排序，然后刷新。 */
+    init {
+        FileBrowserPreferences.attach(context)
+        val prefs = FileBrowserPreferences.current
+        state = FileBrowserUiState(
+            path = FileBrowserPaths.normalize(
+                prefs.lastPath ?: dataSource.initialPath(),
+                dataSource.internalRoot,
+            ),
+            showHidden = prefs.showHidden,
+            sort = prefs.sortOrderOrDefault(),
+        )
+    }
+
+    /** 面板重新可见：清掉搜索词/详情，应用排序/隐藏偏好，然后刷新。 */
     fun onShow() {
+        val prefs = FileBrowserPreferences.current
+        val target = if (state.path == dataSource.initialPath() && !prefs.lastPath.isNullOrBlank()) {
+            FileBrowserPaths.normalize(prefs.lastPath, internalRoot)
+        } else {
+            state.path
+        }
         state = state.copy(
+            path = target,
             query = "",
             details = null,
+            showHidden = prefs.showHidden,
+            sort = prefs.sortOrderOrDefault(),
             loading = true,
             error = null,
         )
@@ -68,7 +93,10 @@ internal class FileBrowserController(
             error = null,
             limited = false,
             truncated = false,
+            directorySizeBytes = null,
+            directorySizeLoading = false,
         )
+        FileBrowserPreferences.rememberLastPath(normalized)
         reload()
     }
 
@@ -91,10 +119,12 @@ internal class FileBrowserController(
 
     fun setShowHidden(show: Boolean) {
         state = state.copy(showHidden = show)
+        FileBrowserPreferences.setShowHidden(show)
     }
 
     fun setSort(order: FileSortOrder) {
         state = state.copy(sort = order)
+        FileBrowserPreferences.setSort(order)
     }
 
     fun showDetails(entry: FileBrowserEntry) {
@@ -108,10 +138,26 @@ internal class FileBrowserController(
     fun cancel() {
         loadJob?.cancel()
         loadJob = null
+        sizeJob?.cancel()
+        sizeJob = null
+    }
+
+    private fun startSizeJob(path: String, access: FileBrowserAccessInfo) {
+        sizeJob?.cancel()
+        state = state.copy(directorySizeBytes = null, directorySizeLoading = true)
+        sizeJob = scope.launch {
+            val size = FileBrowserDirectorySize.compute(path, access)
+            if (!isActive || state.path != path) return@launch
+            state = state.copy(
+                directorySizeBytes = size,
+                directorySizeLoading = false,
+            )
+        }
     }
 
     private fun reload() {
         loadJob?.cancel()
+        sizeJob?.cancel()
         val targetPath = state.path
         loadJob = scope.launch {
             state = state.copy(loading = true, error = null)
@@ -138,7 +184,12 @@ internal class FileBrowserController(
                     error = result.error,
                     limited = false,
                     truncated = false,
+                    directorySizeBytes = null,
+                    directorySizeLoading = false,
                 )
+            }
+            if (result is FileBrowserListingResult.Success) {
+                startSizeJob(targetPath, access)
             }
         }
     }

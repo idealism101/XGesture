@@ -13,6 +13,7 @@ import com.slideindex.app.overlay.OverlayFullScreenPanelHost
 import com.slideindex.app.overlay.OverlayPanelLayoutParams
 import com.slideindex.app.overlay.OverlayViewBackHandler
 import com.slideindex.app.overlay.OverlayWindowTypes
+import com.slideindex.app.overlay.filebrowser.FileBrowserOverlayWindow
 import com.slideindex.app.overlay.PanelSide
 import com.slideindex.app.settings.AppSettings
 import com.slideindex.app.ui.theme.OverlayAwareModuleTheme
@@ -292,6 +293,14 @@ object QuickMenuOverlayWindow {
                                 if (saved.isNotEmpty()) current.recents.value = saved
                             }
                         }
+                    },
+                    onOpenFileBrowser = { initialPath ->
+                        hideForExternalShare()
+                        FileBrowserOverlayWindow.show(
+                            context = hostContext,
+                            settings = current.settings,
+                            initialPath = initialPath,
+                        )
                     },
                     onBack = { current.page.value = null },
                     onDismiss = { dismiss() },

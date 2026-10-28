@@ -33,6 +33,7 @@ import com.slideindex.app.overlay.ringlauncher.RingLauncherOverlayWindow
 import com.slideindex.app.overlay.holographic.HolographicLauncherOverlayWindow
 import com.slideindex.app.overlay.quickwheel.QuickWheelOverlayWindow
 import com.slideindex.app.overlay.OhoQuickToolsOverlayWindow
+import com.slideindex.app.overlay.filebrowser.FileBrowserOverlayWindow
 import com.slideindex.app.overlay.quickmenu.QuickMenuOverlayWindow
 import com.slideindex.app.overlay.PanelSide
 import com.slideindex.app.overlay.WidgetPopupOverlayWindow
@@ -525,6 +526,8 @@ class ActionExecutor(
             }
             GestureAction.SearchPanel ->
                 overlayPanels.showSearchPanel(context, settings, resolvedSide)
+            GestureAction.FileBrowser ->
+                FileBrowserOverlayWindow.show(context, settings)
             GestureAction.VolumePanel -> VolumePanelOverlayWindow.show(context)
             GestureAction.ScreenTranslate -> {
                 SlideIndexAccessibilityService.performScreenTranslate()

@@ -257,6 +257,7 @@ fun gestureActionDescriptionText(context: Context, action: GestureAction): Strin
         GestureActionType.FULLSCREEN_SCREENSHOT_PICK -> context.getString(R.string.gesture_action_fullscreen_screenshot_pick_desc)
         GestureActionType.REGIONAL_SCREENSHOT_PICK -> context.getString(R.string.gesture_action_regional_screenshot_pick_desc)
         GestureActionType.SEARCH_PANEL -> context.getString(R.string.gesture_action_search_panel_desc)
+        GestureActionType.FILE_BROWSER -> context.getString(R.string.file_browser_entry_desc)
         GestureActionType.OPEN_LINK -> context.getString(R.string.gesture_action_open_link_desc)
         GestureActionType.VOLUME_PANEL -> context.getString(R.string.gesture_action_volume_panel_desc)
         GestureActionType.SCREEN_TRANSLATE -> context.getString(R.string.gesture_action_screen_translate_desc)
@@ -374,6 +375,7 @@ fun gestureActionLabelText(context: Context, action: GestureAction): String = wh
         GestureActionType.FULLSCREEN_SCREENSHOT_PICK -> context.getString(R.string.gesture_action_fullscreen_screenshot_pick)
         GestureActionType.REGIONAL_SCREENSHOT_PICK -> context.getString(R.string.gesture_action_regional_screenshot_pick)
         GestureActionType.SEARCH_PANEL -> context.getString(R.string.gesture_action_search_panel)
+        GestureActionType.FILE_BROWSER -> context.getString(R.string.file_browser_title)
         GestureActionType.OPEN_LINK -> context.getString(R.string.gesture_action_open_link)
         GestureActionType.VOLUME_PANEL -> context.getString(R.string.gesture_action_volume_panel)
         GestureActionType.VOLUME_UP -> context.getString(R.string.gesture_action_volume_up)
@@ -537,6 +539,7 @@ fun gestureActionLabel(action: GestureAction, settings: AppSettings? = null): St
         GestureActionType.FULLSCREEN_SCREENSHOT_PICK -> stringResource(R.string.gesture_action_fullscreen_screenshot_pick)
         GestureActionType.REGIONAL_SCREENSHOT_PICK -> stringResource(R.string.gesture_action_regional_screenshot_pick)
         GestureActionType.SEARCH_PANEL -> stringResource(R.string.gesture_action_search_panel)
+        GestureActionType.FILE_BROWSER -> stringResource(R.string.file_browser_title)
         GestureActionType.OPEN_LINK -> stringResource(R.string.gesture_action_open_link)
         GestureActionType.VOLUME_PANEL -> stringResource(R.string.gesture_action_volume_panel)
         GestureActionType.VOLUME_UP -> stringResource(R.string.gesture_action_volume_up)
@@ -646,6 +649,7 @@ fun gestureActionDescription(action: GestureAction): String? = when (action.type
     GestureActionType.FULLSCREEN_SCREENSHOT_PICK -> stringResource(R.string.gesture_action_fullscreen_screenshot_pick_desc)
     GestureActionType.REGIONAL_SCREENSHOT_PICK -> stringResource(R.string.gesture_action_regional_screenshot_pick_desc)
     GestureActionType.SEARCH_PANEL -> stringResource(R.string.gesture_action_search_panel_desc)
+    GestureActionType.FILE_BROWSER -> stringResource(R.string.file_browser_entry_desc)
     GestureActionType.OPEN_LINK -> stringResource(R.string.gesture_action_open_link_desc)
     GestureActionType.VOLUME_PANEL -> stringResource(R.string.gesture_action_volume_panel_desc)
     GestureActionType.VOLUME_UP -> stringResource(R.string.gesture_action_volume_up_desc)
@@ -966,6 +970,11 @@ fun requestPermissionForAdjustAction(context: Context, action: GestureAction) {
             }
         }
         GestureAction.SearchPanel -> {
+            if (!PermissionHelper.isAccessibilityServiceEnabledForOverlays(context)) {
+                context.startActivity(PermissionHelper.accessibilitySettingsIntent())
+            }
+        }
+        GestureAction.FileBrowser -> {
             if (!PermissionHelper.isAccessibilityServiceEnabledForOverlays(context)) {
                 context.startActivity(PermissionHelper.accessibilitySettingsIntent())
             }

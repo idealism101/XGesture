@@ -68,4 +68,14 @@
     <string name="file_browser_detail_type">类型</string>
     <string name="file_browser_copy_path">复制路径</string>
     <string name="file_browser_copied">已复制</string>
+
+    <string name="file_browser_card_title">文件</string>
+    <string name="file_browser_card_available">%1$s 可用</string>
+    <string name="file_browser_card_size_loading">正在读取存储…</string>
+    <string name="file_browser_card_used_of_total">已用 %1$s / 共 %2$s</string>
+    <string name="file_browser_pin_current">固定到快捷菜单</string>
+    <string name="file_browser_unpin_current">取消固定</string>
+    <string name="file_browser_footer_count_size">共 %1$d 项 · 本层 %2$s</string>
+    <string name="file_browser_footer_count_directory">共 %1$d 项 · 当前目录 %2$s</string>
+    <string name="file_browser_size_calculating">正在计算…</string>
 </resources>

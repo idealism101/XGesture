@@ -450,6 +450,7 @@ internal fun GestureSession.handleClassifiedGesture(
         GestureAction.FullscreenScreenshotPick,
         GestureAction.RegionalScreenshotPick,
         GestureAction.SearchPanel,
+        GestureAction.FileBrowser,
         GestureAction.PowerMenu,
         GestureAction.KeepScreenOn,
         GestureAction.SnoozeOverlays,

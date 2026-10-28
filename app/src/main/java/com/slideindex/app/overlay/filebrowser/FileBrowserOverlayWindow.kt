@@ -82,19 +82,28 @@ internal object FileBrowserOverlayWindow {
     val isShowing: Boolean
         get() = host.isAttached && session?.visible?.value == true
 
-    fun show(context: Context, settings: AppSettings): Boolean {
+    fun show(
+        context: Context,
+        settings: AppSettings,
+        initialPath: String? = null,
+    ): Boolean {
         if (Looper.myLooper() != Looper.getMainLooper()) {
             var result = false
             val latch = CountDownLatch(1)
             mainHandler.post {
-                result = show(context, settings)
+                result = show(context, settings, initialPath)
                 latch.countDown()
             }
             runCatching { latch.await(500, TimeUnit.MILLISECONDS) }
             return result
         }
 
-        if (isShowing) return true
+        if (isShowing) {
+            if (!initialPath.isNullOrBlank()) {
+                session?.controller?.navigateTo(initialPath)
+            }
+            return true
+        }
 
         if (!PermissionHelper.isAccessibilityServiceEnabledForOverlays(context)) {
             Log.w(TAG, "show: accessibility service not enabled")
@@ -120,7 +129,11 @@ internal object FileBrowserOverlayWindow {
         host.setViewVisible(true)
         host.setTouchable(true)
         host.setInputActive(true)
-        current.controller.onShow()
+        if (initialPath.isNullOrBlank()) {
+            current.controller.onShow()
+        } else {
+            current.controller.navigateTo(initialPath)
+        }
         return true
     }
 

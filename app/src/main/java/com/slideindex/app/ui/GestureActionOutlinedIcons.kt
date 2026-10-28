@@ -1,6 +1,7 @@
 package com.slideindex.app.ui
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Handyman
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.PhotoLibrary
@@ -83,6 +84,7 @@ internal fun gestureActionTypeOutlinedIcon(type: GestureActionType): ImageVector
     GestureActionType.FULLSCREEN_SCREENSHOT_PICK -> ThinActionIcons.TextFields
     GestureActionType.REGIONAL_SCREENSHOT_PICK -> ThinActionIcons.ScreenshotRegion
     GestureActionType.SEARCH_PANEL -> ThinActionIcons.Search
+    GestureActionType.FILE_BROWSER -> Icons.Outlined.Folder
     GestureActionType.VOLUME_PANEL -> ThinActionIcons.VolumeUp
     GestureActionType.SCREEN_TRANSLATE -> ThinActionIcons.TextFields
     GestureActionType.SCREEN_SEARCH -> ThinActionIcons.Search
@@ -189,6 +191,7 @@ internal fun gestureActionTypeThinIcon(type: GestureActionType): ImageVector = w
     GestureActionType.FULLSCREEN_SCREENSHOT_PICK -> ThinActionIcons.TextFields
     GestureActionType.REGIONAL_SCREENSHOT_PICK -> ThinActionIcons.ScreenshotRegion
     GestureActionType.SEARCH_PANEL -> ThinActionIcons.Search
+    GestureActionType.FILE_BROWSER -> Icons.Outlined.Folder
     GestureActionType.VOLUME_PANEL -> ThinActionIcons.VolumeUp
     GestureActionType.SCREEN_TRANSLATE -> ThinActionIcons.TextFields
     GestureActionType.SCREEN_SEARCH -> ThinActionIcons.Search

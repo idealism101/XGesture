@@ -68,4 +68,14 @@
     <string name="file_browser_detail_type">Type</string>
     <string name="file_browser_copy_path">Copy path</string>
     <string name="file_browser_copied">Copied</string>
+
+    <string name="file_browser_card_title">Files</string>
+    <string name="file_browser_card_available">%1$s free</string>
+    <string name="file_browser_card_size_loading">Reading storage…</string>
+    <string name="file_browser_card_used_of_total">%1$s used / %2$s total</string>
+    <string name="file_browser_pin_current">Pin to Quick Menu</string>
+    <string name="file_browser_unpin_current">Unpin from Quick Menu</string>
+    <string name="file_browser_footer_count_size">%1$d items · %2$s on this level</string>
+    <string name="file_browser_footer_count_directory">%1$d items · %2$s total</string>
+    <string name="file_browser_size_calculating">Calculating…</string>
 </resources>

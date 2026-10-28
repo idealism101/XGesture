@@ -1,5 +1,6 @@
 package com.slideindex.app.privilege
 
+import com.slideindex.app.privilege.root.RootNamespace
 import com.slideindex.app.settings.PrivilegeMode
 import com.slideindex.app.shizuku.RootShellSession
 import com.slideindex.app.shizuku.TaskManagerShellExecutor
@@ -16,6 +17,7 @@ object PrivilegeGateway {
         this.mode = mode
         ShellCommandExecutor.invalidateRootCache()
         TaskManagerUtil.invalidatePrivilegedAccessCache()
+        RootNamespace.invalidate()
         RootShellSession.close()
     }
 
