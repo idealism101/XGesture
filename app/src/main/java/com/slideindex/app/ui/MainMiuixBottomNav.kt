@@ -28,15 +28,13 @@ val MainMiuixBottomNavOuterPadding = 8.dp
 /**
  * 液态玻璃底栏：内部直接使用 Mishka 的 [IosLiquidGlassNavigationBar] 实现。
  *
- * 对外保持本项目原有入参（pager 进度跟手、模糊半径、重复点击回顶），
- * 由上游组件的三个本地扩展参数 progress / isTracking / blurRadiusDp 承接。
+ * 与上游保持一致：胶囊只由组件内部弹簧驱动，不再接收 pager 进度。
+ * 对外保留本项目自有入参（模糊半径、重复点击回顶）。
  */
 @Composable
 fun MiuixFloatingBottomNavBar(
     backdrop: LayerBackdrop?,
     targetTabIndex: Int,
-    progress: () -> Float,
-    isTracking: () -> Boolean,
     blurRadiusDp: Float,
     glassEnabled: Boolean,
     onTabSelected: (MainBottomNavDestination) -> Unit,
@@ -70,8 +68,6 @@ fun MiuixFloatingBottomNavBar(
         isDark = LocalAppDarkTheme.current,
         showLabels = showLabel,
         modifier = modifier,
-        progress = progress,
-        isTracking = isTracking,
         blurRadiusDp = blurRadiusDp.coerceIn(
             BottomNavBlurDefaults.MIN_RADIUS_DP,
             BottomNavBlurDefaults.MAX_RADIUS_DP,
