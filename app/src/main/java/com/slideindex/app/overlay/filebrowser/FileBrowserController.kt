@@ -25,6 +25,7 @@ data class FileBrowserUiState(
     val truncated: Boolean = false,
     val directorySizeBytes: Long? = null,
     val directorySizeLoading: Boolean = false,
+    val directorySizeComputed: Boolean = false,
 )
 
 /**
@@ -90,8 +91,11 @@ internal class FileBrowserController(
             sort = prefs.sortOrderOrDefault(),
             loading = true,
             error = null,
+            directorySizeBytes = null,
+            directorySizeLoading = false,
+            directorySizeComputed = false,
         )
-        reload()
+        reload(resolveAccess = true)
     }
 
     fun navigateTo(path: String) {
@@ -108,9 +112,10 @@ internal class FileBrowserController(
             truncated = false,
             directorySizeBytes = null,
             directorySizeLoading = false,
+            directorySizeComputed = false,
         )
         FileBrowserPreferences.rememberLastPath(normalized)
-        reload()
+        reload(resolveAccess = false)
     }
 
     fun goParent() {
@@ -118,12 +123,12 @@ internal class FileBrowserController(
     }
 
     fun refresh() {
-        reload()
+        reload(resolveAccess = true)
     }
 
     /** 授权返回后调用：重新探测访问能力并重载当前目录。 */
     fun refreshAccessAndReload() {
-        reload()
+        reload(resolveAccess = true)
     }
 
     fun setQuery(query: String) {
@@ -155,26 +160,44 @@ internal class FileBrowserController(
         sizeJob = null
     }
 
-    private fun startSizeJob(path: String, access: FileBrowserAccessInfo) {
+    fun computeDirectorySize() {
+        if (state.loading || state.directorySizeLoading) return
+        val access = state.access ?: return
+        val targetPath = state.path
         sizeJob?.cancel()
-        state = state.copy(directorySizeBytes = null, directorySizeLoading = true)
+        state = state.copy(
+            directorySizeBytes = null,
+            directorySizeLoading = true,
+            directorySizeComputed = false,
+        )
         sizeJob = scope.launch {
-            val size = FileBrowserDirectorySize.compute(path, access)
-            if (!isActive || state.path != path) return@launch
+            val size = FileBrowserDirectorySize.compute(targetPath, access)
+            if (!isActive || state.path != targetPath) return@launch
             state = state.copy(
                 directorySizeBytes = size,
                 directorySizeLoading = false,
+                directorySizeComputed = true,
             )
         }
     }
 
-    private fun reload() {
+    private fun reload(resolveAccess: Boolean = false) {
         loadJob?.cancel()
         sizeJob?.cancel()
         val targetPath = state.path
         loadJob = scope.launch {
-            state = state.copy(loading = true, error = null)
-            val access = withContext(Dispatchers.IO) { dataSource.resolveAccess() }
+            state = state.copy(
+                loading = true,
+                error = null,
+                directorySizeBytes = null,
+                directorySizeLoading = false,
+                directorySizeComputed = false,
+            )
+            val access = if (resolveAccess || state.access == null) {
+                withContext(Dispatchers.IO) { dataSource.resolveAccess() }
+            } else {
+                state.access!!
+            }
             if (!isActive) return@launch
             state = state.copy(access = access)
 
@@ -199,10 +222,8 @@ internal class FileBrowserController(
                     truncated = false,
                     directorySizeBytes = null,
                     directorySizeLoading = false,
+                    directorySizeComputed = false,
                 )
-            }
-            if (result is FileBrowserListingResult.Success) {
-                startSizeJob(targetPath, access)
             }
         }
     }

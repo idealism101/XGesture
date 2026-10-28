@@ -1,25 +1,28 @@
 package com.slideindex.app.overlay.filebrowser
 
+import com.slideindex.app.privilege.root.RootNamespace
 import com.slideindex.app.shizuku.TaskManagerShellExecutor
 import com.slideindex.app.util.TaskManagerUtil
 import java.io.File
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
 
 /**
- * 当前目录的递归大小。
+ * 当前目录的递归大小（**手动触发**，不自动跑）。
  *
- * - Root：走常驻 su 会话里的 `du -sk`（已由 RootNamespace 切到全局 mount namespace）；
+ * - Root：单独起一个 `su -c 'nsenter ... du'` 进程，**不占用** RootShellSession 的交互 shell，
+ *   避免 `du` 把列目录/Root 探测锁死；
  * - Shizuku：走 UserService 里的 `du`；
  * - 普通可读路径：Java 递归遍历。
  *
  * 这是尽力而为：大目录/超时/没有 du 都返回 null，UI 保留“本层文件大小”而不是卡住。
  */
 internal object FileBrowserDirectorySize {
-    private const val ROOT_TIMEOUT_MS = 20_000L
-    private const val SHIZUKU_TIMEOUT_MS = 15_000L
+    private const val ROOT_TIMEOUT_SECONDS = 5L
+    private const val SHIZUKU_TIMEOUT_MS = 8_000L
     private const val DIRECT_WALK_LIMIT = 50_000
 
     suspend fun compute(path: String, access: FileBrowserAccessInfo): Long? =
@@ -41,16 +44,41 @@ internal object FileBrowserDirectorySize {
 
     private suspend fun shellSize(path: String, useRoot: Boolean): Long? {
         val command = "du -sk ${TaskManagerShellExecutor.shellQuote(path)} 2>/dev/null"
-        val output = if (useRoot) {
-            TaskManagerShellExecutor.runAsRootUser(command, ROOT_TIMEOUT_MS).output
-        } else {
-            TaskManagerUtil.runShellCommandLine(
+        if (!useRoot) {
+            val result = TaskManagerUtil.runShellCommandLine(
                 command = command,
                 useRoot = false,
                 timeoutMs = SHIZUKU_TIMEOUT_MS,
-            ).output
+            )
+            return parseDuKb(result.output)
         }
-        return parseDuKb(output)
+        return withContext(Dispatchers.IO) {
+            val sh = TaskManagerShellExecutor.resolveShPath()
+            val inner = if (RootNamespace.nsenterBinaryExists()) {
+                "${RootNamespace.NSENTER_PATH} -t 1 -m -- $sh -c " +
+                    TaskManagerShellExecutor.shellQuote(command)
+            } else {
+                command
+            }
+            val process = runCatching {
+                ProcessBuilder(TaskManagerShellExecutor.resolveSuInvocation(), "-c", inner)
+                    .redirectErrorStream(true)
+                    .directory(File("/"))
+                    .start()
+            }.getOrNull() ?: return@withContext null
+            try {
+                if (!process.waitFor(ROOT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                    process.destroyForcibly()
+                    return@withContext null
+                }
+                val output = runCatching {
+                    process.inputStream.bufferedReader().use { it.readText() }
+                }.getOrDefault("")
+                parseDuKb(output)
+            } finally {
+                runCatching { process.destroy() }
+            }
+        }
     }
 
     private suspend fun directSize(path: String): Long? {

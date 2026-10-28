@@ -53,6 +53,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -251,7 +252,9 @@ internal fun FileBrowserPanel(
                                 sizeBytes = levelBytes,
                                 directorySizeBytes = state.directorySizeBytes,
                                 directorySizeLoading = state.directorySizeLoading,
+                                directorySizeComputed = state.directorySizeComputed,
                                 truncated = state.truncated,
+                                onComputeSize = controller::computeDirectorySize,
                             )
                         }
                     }
@@ -637,7 +640,9 @@ private fun FileBrowserFooter(
     sizeBytes: Long,
     directorySizeBytes: Long?,
     directorySizeLoading: Boolean,
+    directorySizeComputed: Boolean,
     truncated: Boolean,
+    onComputeSize: () -> Unit,
 ) {
     HorizontalDivider(
         thickness = 0.5.dp,
@@ -655,10 +660,15 @@ private fun FileBrowserFooter(
                 count,
                 stringResource(R.string.file_browser_size_calculating),
             )
-            directorySizeBytes != null -> stringResource(
+            directorySizeComputed && directorySizeBytes != null -> stringResource(
                 R.string.file_browser_footer_count_directory,
                 count,
                 FileBrowserFormat.size(directorySizeBytes),
+            )
+            directorySizeComputed -> stringResource(
+                R.string.file_browser_footer_count_size,
+                count,
+                stringResource(R.string.file_browser_size_unavailable),
             )
             else -> stringResource(
                 R.string.file_browser_footer_count_size,
@@ -670,8 +680,19 @@ private fun FileBrowserFooter(
             text = footerText,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
         )
-        Spacer(modifier = Modifier.weight(1f))
+        if (!directorySizeLoading && !directorySizeComputed) {
+            TextButton(
+                onClick = onComputeSize,
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.file_browser_compute_size),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+        }
         if (truncated) {
             Text(
                 text = stringResource(

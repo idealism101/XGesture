@@ -78,4 +78,6 @@
     <string name="file_browser_footer_count_size">共 %1$d 项 · 本层 %2$s</string>
     <string name="file_browser_footer_count_directory">共 %1$d 项 · 当前目录 %2$s</string>
     <string name="file_browser_size_calculating">正在计算…</string>
+    <string name="file_browser_size_unavailable">无法计算</string>
+    <string name="file_browser_compute_size">计算大小</string>
 </resources>

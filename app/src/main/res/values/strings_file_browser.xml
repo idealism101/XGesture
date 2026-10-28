@@ -78,4 +78,6 @@
     <string name="file_browser_footer_count_size">%1$d items · %2$s on this level</string>
     <string name="file_browser_footer_count_directory">%1$d items · %2$s total</string>
     <string name="file_browser_size_calculating">Calculating…</string>
+    <string name="file_browser_size_unavailable">unavailable</string>
+    <string name="file_browser_compute_size">Size</string>
 </resources>
