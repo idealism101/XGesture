@@ -185,14 +185,26 @@ class TaskCenterListView(context: Context) : View(context), TaskCenterSurface {
 
     // ---------- 绘制 ----------
 
+    // 绘制期复用的临时对象，避免 onDraw 每帧分配（DrawAllocation）。
+    private val tmpRect = RectF()
+    private val tmpRect2 = RectF()
+    private val tmpPath = Path()
+    private val fillPaint = Paint().apply { style = Paint.Style.FILL }
+    private val strokePaint = Paint().apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 1.6f
+        strokeCap = Paint.Cap.ROUND
+    }
+    private val textPaint = Paint().apply { isFakeBoldText = true }
+    private val subTextPaint = Paint()
+
     override fun onDraw(canvas: Canvas) {
         if (tasks.isEmpty()) return
-        val saveAlpha = panelAlpha
         canvas.save()
         if (backYieldOffset != 0f) canvas.translate(backYieldOffset, 0f)
         // 面板背板
-        val panelRect = RectF(panelX, panelY, panelX + panelWidthPx, panelY + rowRects.size * rowHeightPx)
-        drawRoundRect(canvas, panelRect, cornerRadiusPx, panelBg)
+        tmpRect.set(panelX, panelY, panelX + panelWidthPx, panelY + rowRects.size * rowHeightPx)
+        drawRoundRect(canvas, tmpRect, cornerRadiusPx, panelBg)
         // 逐行
         for (i in tasks.indices) {
             drawRow(canvas, i)
@@ -210,8 +222,8 @@ class TaskCenterListView(context: Context) : View(context), TaskCenterSurface {
         val alphaMul = if (i == activeRow) 1f else FOCUS_RECEDE
         val selected = i == activeRow
         // 行背景
-        drawRoundRect(canvas, RectF(r.left + dp(6f), r.top + dp(4f), r.right - dp(6f), r.bottom - dp(4f)),
-            dp(14f), if (selected) rowBgSelected else rowBg)
+        tmpRect.set(r.left + dp(6f), r.top + dp(4f), r.right - dp(6f), r.bottom - dp(4f))
+        drawRoundRect(canvas, tmpRect, dp(14f), if (selected) rowBgSelected else rowBg)
         val cx = r.left + dp(6f) + rowOffsetX
         // 图标（圆形）
         val iconLeft = cx + dp(14f)
@@ -219,38 +231,41 @@ class TaskCenterListView(context: Context) : View(context), TaskCenterSurface {
         val iconBmp = iconBitmaps.getOrNull(i)
         if (iconBmp != null) {
             canvas.save()
-            val path = Path()
-            path.addCircle(iconLeft + iconSizePx / 2f, iconTop + iconSizePx / 2f, iconSizePx / 2f, Path.Direction.CW)
-            canvas.clipPath(path)
+            tmpPath.reset()
+            tmpPath.addCircle(iconLeft + iconSizePx / 2f, iconTop + iconSizePx / 2f, iconSizePx / 2f, Path.Direction.CW)
+            canvas.clipPath(tmpPath)
             canvas.drawBitmap(iconBmp, iconLeft, iconTop, null)
             canvas.restore()
             // 图标淡投影垫圈（功能件，保留）
-            val ring = Paint().apply { color = Color.argb(40, 0, 0, 0); style = Paint.Style.STROKE; strokeWidth = dp(2f) }
-            canvas.drawCircle(iconLeft + iconSizePx / 2f, iconTop + iconSizePx / 2f, iconSizePx / 2f + dp(1f), ring)
+            strokePaint.color = Color.argb(40, 0, 0, 0)
+            strokePaint.strokeWidth = dp(2f)
+            canvas.drawCircle(iconLeft + iconSizePx / 2f, iconTop + iconSizePx / 2f, iconSizePx / 2f + dp(1f), strokePaint)
         }
         // 快照缩略
         val snapLeft = iconLeft + iconSizePx + dp(10f)
         val snapTop = r.top + (rowHeightPx - snapSizePx) / 2f
         val snapBmp = snapBitmaps.getOrNull(i)
         if (snapBmp != null) {
-            drawRoundRect(canvas, RectF(snapLeft, snapTop, snapLeft + snapSizePx, snapTop + snapSizePx), dp(8f), Color.DKGRAY)
+            tmpRect.set(snapLeft, snapTop, snapLeft + snapSizePx, snapTop + snapSizePx)
+            drawRoundRect(canvas, tmpRect, dp(8f), Color.DKGRAY)
             canvas.save()
-            val path = Path()
-            path.addRoundRect(RectF(snapLeft, snapTop, snapLeft + snapSizePx, snapTop + snapSizePx), dp(8f), dp(8f), Path.Direction.CW)
-            canvas.clipPath(path)
-            canvas.drawBitmap(snapBmp, null, RectF(snapLeft, snapTop, snapLeft + snapSizePx, snapTop + snapSizePx), null)
+            tmpPath.reset()
+            tmpPath.addRoundRect(tmpRect, dp(8f), dp(8f), Path.Direction.CW)
+            canvas.clipPath(tmpPath)
+            canvas.drawBitmap(snapBmp, null, tmpRect, null)
             canvas.restore()
         }
         // 应用名 + 包名
         val textLeft = snapLeft + snapSizePx + dp(12f)
-        val p = Paint().apply {
-            color = textMain; textSize = dp(15f); isFakeBoldText = true
-            alpha = (alphaMul * 255).toInt().coerceIn(0, 255)
-        }
+        textPaint.color = textMain
+        textPaint.textSize = dp(15f)
+        textPaint.alpha = (alphaMul * 255).toInt().coerceIn(0, 255)
         val label = task.label?.toString() ?: task.packageName
-        canvas.drawText(label, textLeft, r.top + rowHeightPx / 2f - dp(6f), p)
-        val sub = Paint().apply { color = textSub; textSize = dp(11f); alpha = (alphaMul * 255).toInt().coerceIn(0, 255) }
-        canvas.drawText(task.packageName, textLeft, r.top + rowHeightPx / 2f + dp(12f), sub)
+        canvas.drawText(label, textLeft, r.top + rowHeightPx / 2f - dp(6f), textPaint)
+        subTextPaint.color = textSub
+        subTextPaint.textSize = dp(11f)
+        subTextPaint.alpha = (alphaMul * 255).toInt().coerceIn(0, 255)
+        canvas.drawText(task.packageName, textLeft, r.top + rowHeightPx / 2f + dp(12f), subTextPaint)
         // 锁定徽标（矢量锁形，不用文字：本视图跑在 SystemUI 进程，模块自身 strings 不可用）
         if (lockedSet.contains(task.packageName)) {
             drawLockGlyph(canvas, textLeft + dp(4.5f), r.top + dp(9f), dp(11f), accent, closed = true)
@@ -283,71 +298,62 @@ class TaskCenterListView(context: Context) : View(context), TaskCenterSurface {
      * [closed] = true 锁梁闭合（上锁动作）；false 锁梁右移断开（开锁动作）。
      */
     private fun drawLockGlyph(canvas: Canvas, cx: Float, cy: Float, height: Float, color: Int, closed: Boolean) {
-        val p = Paint().apply {
-            this.color = color
-            style = Paint.Style.STROKE
-            strokeWidth = dp(1.6f)
-            strokeCap = Paint.Cap.ROUND
-        }
+        strokePaint.color = color
+        strokePaint.strokeWidth = dp(1.6f)
         val bodyH = height * 0.56f
         val bodyTop = cy + height / 2f - bodyH
         val bodyBottom = cy + height / 2f
         val bodyHalfW = bodyH * 0.62f
-        canvas.drawRoundRect(RectF(cx - bodyHalfW, bodyTop, cx + bodyHalfW, bodyBottom), dp(2f), dp(2f), p)
+        tmpRect.set(cx - bodyHalfW, bodyTop, cx + bodyHalfW, bodyBottom)
+        canvas.drawRoundRect(tmpRect, dp(2f), dp(2f), strokePaint)
         val shackleR = bodyHalfW * 0.72f
         // 未闭合时锁梁整体右移并抬高，与锁体断开 —— 视觉上就是"锁打开了"
         val shackleCx = if (closed) cx else cx + shackleR * 0.75f
         val shackleTop = if (closed) bodyTop - shackleR * 2f else bodyTop - shackleR * 2.4f
-        canvas.drawArc(RectF(shackleCx - shackleR, shackleTop, shackleCx + shackleR, bodyTop), 180f, 180f, false, p)
+        tmpRect.set(shackleCx - shackleR, shackleTop, shackleCx + shackleR, bodyTop)
+        canvas.drawArc(tmpRect, 180f, 180f, false, strokePaint)
     }
 
     /** 分屏：两条并排竖条。 */
     private fun drawSplitGlyph(canvas: Canvas, cx: Float, cy: Float, color: Int) {
-        val p = Paint().apply { this.color = color; style = Paint.Style.FILL }
+        fillPaint.color = color
         val barW = dp(2.6f)
         val gap = dp(2.4f)
         val h = dp(13f)
         val top = cy - h / 2f
-        canvas.drawRoundRect(RectF(cx - gap / 2f - barW, top, cx - gap / 2f, top + h), dp(1.3f), dp(1.3f), p)
-        canvas.drawRoundRect(RectF(cx + gap / 2f, top, cx + gap / 2f + barW, top + h), dp(1.3f), dp(1.3f), p)
+        tmpRect.set(cx - gap / 2f - barW, top, cx - gap / 2f, top + h)
+        canvas.drawRoundRect(tmpRect, dp(1.3f), dp(1.3f), fillPaint)
+        tmpRect.set(cx + gap / 2f, top, cx + gap / 2f + barW, top + h)
+        canvas.drawRoundRect(tmpRect, dp(1.3f), dp(1.3f), fillPaint)
     }
 
     /** 小窗：圆角窗口框 + 左上角标题条实心块（浮在整屏之上的一扇窗）。 */
     private fun drawFreeformGlyph(canvas: Canvas, cx: Float, cy: Float, color: Int) {
-        val p = Paint().apply {
-            this.color = color
-            style = Paint.Style.STROKE
-            strokeWidth = dp(1.6f)
-        }
+        strokePaint.color = color
+        strokePaint.strokeWidth = dp(1.6f)
         val w = dp(13f)
         val h = dp(11f)
-        val rect = RectF(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f)
-        canvas.drawRoundRect(rect, dp(2f), dp(2f), p)
-        val bar = Paint().apply { this.color = color; style = Paint.Style.FILL }
-        canvas.drawRoundRect(
-            RectF(rect.left + dp(2.5f), rect.top + dp(2.5f), rect.left + dp(7f), rect.top + dp(4.2f)),
-            dp(1f), dp(1f), bar,
-        )
+        tmpRect.set(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f)
+        canvas.drawRoundRect(tmpRect, dp(2f), dp(2f), strokePaint)
+        fillPaint.color = color
+        tmpRect2.set(tmpRect.left + dp(2.5f), tmpRect.top + dp(2.5f), tmpRect.left + dp(7f), tmpRect.top + dp(4.2f))
+        canvas.drawRoundRect(tmpRect2, dp(1f), dp(1f), fillPaint)
     }
 
     /** 关闭：两笔交叉。 */
     private fun drawCrossGlyph(canvas: Canvas, cx: Float, cy: Float, color: Int) {
-        val p = Paint().apply {
-            this.color = color
-            style = Paint.Style.STROKE
-            strokeWidth = dp(1.6f)
-            strokeCap = Paint.Cap.ROUND
-        }
+        strokePaint.color = color
+        strokePaint.strokeWidth = dp(1.6f)
         val arm = dp(5f)
-        canvas.drawLine(cx - arm, cy - arm, cx + arm, cy + arm, p)
-        canvas.drawLine(cx + arm, cy - arm, cx - arm, cy + arm, p)
+        canvas.drawLine(cx - arm, cy - arm, cx + arm, cy + arm, strokePaint)
+        canvas.drawLine(cx + arm, cy - arm, cx - arm, cy + arm, strokePaint)
     }
 
     private fun drawRoundRect(canvas: Canvas, rect: RectF, radius: Float, color: Int) {
-        val p = Paint().apply { this.color = color; style = Paint.Style.FILL }
-        val path = Path()
-        path.addRoundRect(rect, radius, radius, Path.Direction.CW)
-        canvas.drawPath(path, p)
+        fillPaint.color = color
+        tmpPath.reset()
+        tmpPath.addRoundRect(rect, radius, radius, Path.Direction.CW)
+        canvas.drawPath(tmpPath, fillPaint)
     }
 
     // ---------- 触摸 ----------

@@ -250,6 +250,16 @@ class RecentTaskRepository(private val context: Context) {
             return null
         }
 
+        /**
+         * 取 IActivityTaskManager 实例（任务快照 / 从最近任务唤起 / 移除任务都靠它）。
+         *
+         * `ActivityTaskManager.getService()` 是隐藏 API，公开 SDK 里没有；但本类只在
+         * **SystemUI 进程**内使用（见 [TaskCenterSystemUiHook]），SystemUI 是系统应用、
+         * 走 hidden API 白名单豁免，不受 targetSdk 的非 SDK 接口限制影响。
+         *
+         * Lint 依据 App 自身的 targetSdk 判为 BlockedPrivateApi，此处按事实豁免。
+         */
+        @SuppressLint("BlockedPrivateApi")
         private fun activityTaskManagerService(): Any? = try {
             val manager = Class.forName("android.app.ActivityTaskManager")
             val getService = manager.getDeclaredMethod("getService")

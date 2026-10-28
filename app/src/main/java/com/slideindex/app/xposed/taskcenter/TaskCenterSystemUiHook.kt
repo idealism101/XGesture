@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
 import android.os.Looper
+import androidx.core.content.ContextCompat
 import com.slideindex.app.xposed.LibXposedReflect
 
 /**
@@ -53,8 +54,9 @@ object TaskCenterSystemUiHook {
             addAction(TaskCenterBroadcastContract.ACTION_CLOSE)
         }
         // 跨进程广播（App → SystemUI），必须 exported。
-        @Suppress("DEPRECATION")
-        context.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+        // 用 ContextCompat 而不是 Context.RECEIVER_EXPORTED：后者要 API 33，
+        // 而本模块 minSdk 是 31，ContextCompat 会按版本补齐（API 26+ 走旧重载）。
+        ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
         receiverRegistered = true
         TaskCenterLog.i("TaskCenter receiver registered")
     }
