@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -46,7 +47,6 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Storage
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -55,6 +55,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -449,49 +450,36 @@ internal fun FileBrowserPanel(
                     }
                     deleteTarget?.let { target ->
                         val access = state.access
-                        AlertDialog(
-                            onDismissRequest = { deleteTarget = null },
-                            title = { Text(stringResource(R.string.file_browser_delete)) },
-                            text = {
-                                Text(
-                                    stringResource(
-                                        R.string.file_browser_delete_message,
-                                        target.name,
-                                    ),
-                                )
-                            },
-                            confirmButton = {
-                                TextButton(
-                                    onClick = {
-                                        deleteTarget = null
-                                        if (access != null) {
-                                            actionScope.launch {
-                                                val ok = FileBrowserWrite.delete(
-                                                    path = target.path,
-                                                    access = access,
-                                                )
-                                                if (ok) {
-                                                    controller.hideDetails()
-                                                    controller.refresh()
-                                                } else {
-                                                    operationError = true
-                                                }
-                                            }
+                        FileBrowserDialog(
+                            title = stringResource(R.string.file_browser_delete),
+                            onDismiss = { deleteTarget = null },
+                            confirmLabel = stringResource(R.string.file_browser_delete),
+                            confirmColor = MaterialTheme.colorScheme.error,
+                            onConfirm = {
+                                deleteTarget = null
+                                if (access != null) {
+                                    actionScope.launch {
+                                        val ok = FileBrowserWrite.delete(
+                                            path = target.path,
+                                            access = access,
+                                        )
+                                        if (ok) {
+                                            controller.hideDetails()
+                                            controller.refresh()
+                                        } else {
+                                            operationError = true
                                         }
-                                    },
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.file_browser_delete),
-                                        color = MaterialTheme.colorScheme.error,
-                                    )
+                                    }
                                 }
                             },
-                            dismissButton = {
-                                TextButton(onClick = { deleteTarget = null }) {
-                                    Text(stringResource(R.string.file_browser_cancel))
-                                }
-                            },
-                        )
+                        ) {
+                            Text(
+                                stringResource(
+                                    R.string.file_browser_delete_message,
+                                    target.name,
+                                ),
+                            )
+                        }
                     }
                     if (operationError) {
                         Text(
@@ -1011,6 +999,65 @@ private fun copyToClipboard(context: Context, text: String) {
 }
 
 @Composable
+private fun FileBrowserDialog(
+    title: String,
+    onDismiss: () -> Unit,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    confirmColor: Color = MaterialTheme.colorScheme.primary,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.32f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onDismiss,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 22.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {},
+                ),
+            shape = RoundedCornerShape(22.dp),
+            tonalElevation = 6.dp,
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                content()
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.file_browser_cancel))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = onConfirm) {
+                        Text(text = confirmLabel, color = confirmColor)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun FileBrowserNameDialog(
     initialName: String,
     title: String,
@@ -1019,34 +1066,23 @@ private fun FileBrowserNameDialog(
     onConfirm: (String) -> Unit,
 ) {
     var value by remember(initialName) { mutableStateOf(initialName) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            OutlinedTextField(
-                value = value,
-                onValueChange = { value = it },
-                singleLine = true,
-                label = { Text(stringResource(R.string.file_browser_name_hint)) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+    FileBrowserDialog(
+        title = title,
+        onDismiss = onDismiss,
+        confirmLabel = confirmLabel,
+        onConfirm = {
+            val name = value.trim()
+            if (name.isNotEmpty()) onConfirm(name)
         },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val name = value.trim()
-                    if (name.isNotEmpty()) onConfirm(name)
-                },
-            ) {
-                Text(confirmLabel)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.file_browser_cancel))
-            }
-        },
-    )
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { value = it },
+            singleLine = true,
+            label = { Text(stringResource(R.string.file_browser_name_hint)) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 @Composable
@@ -1055,34 +1091,23 @@ private fun FileBrowserSearchDialog(
     onSearch: (String) -> Unit,
 ) {
     var value by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.file_browser_recursive_search)) },
-        text = {
-            OutlinedTextField(
-                value = value,
-                onValueChange = { value = it },
-                singleLine = true,
-                label = { Text(stringResource(R.string.file_browser_search_hint_recursive)) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+    FileBrowserDialog(
+        title = stringResource(R.string.file_browser_recursive_search),
+        onDismiss = onDismiss,
+        confirmLabel = stringResource(R.string.file_browser_go),
+        onConfirm = {
+            val query = value.trim()
+            if (query.isNotEmpty()) onSearch(query)
         },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val query = value.trim()
-                    if (query.isNotEmpty()) onSearch(query)
-                },
-            ) {
-                Text(stringResource(R.string.file_browser_go))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.file_browser_cancel))
-            }
-        },
-    )
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { value = it },
+            singleLine = true,
+            label = { Text(stringResource(R.string.file_browser_search_hint_recursive)) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 private sealed interface FileBrowserNameTarget {
@@ -1097,32 +1122,21 @@ private fun FileBrowserPathDialog(
     onNavigate: (String) -> Unit,
 ) {
     var value by remember(initialPath) { mutableStateOf(initialPath) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.file_browser_jump_path)) },
-        text = {
-            OutlinedTextField(
-                value = value,
-                onValueChange = { value = it },
-                singleLine = true,
-                label = { Text(stringResource(R.string.file_browser_jump_hint)) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+    FileBrowserDialog(
+        title = stringResource(R.string.file_browser_jump_path),
+        onDismiss = onDismiss,
+        confirmLabel = stringResource(R.string.file_browser_go),
+        onConfirm = {
+            val target = value.trim()
+            if (target.isNotEmpty()) onNavigate(target)
         },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val target = value.trim()
-                    if (target.isNotEmpty()) onNavigate(target)
-                },
-            ) {
-                Text(stringResource(R.string.file_browser_go))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.file_browser_cancel))
-            }
-        },
-    )
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { value = it },
+            singleLine = true,
+            label = { Text(stringResource(R.string.file_browser_jump_hint)) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
