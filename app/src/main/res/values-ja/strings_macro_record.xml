@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 宏：录制浮动条 -->
+    <string name="macro_record_badge">マクロ</string>
+    <string name="macro_record_running">記録中</string>
+    <string name="macro_record_drag_handle">ドラッグ</string>
+    <string name="macro_record_counts">操作 %1$d</string>
+    <string name="macro_record_counts_with_waits">操作 %1$d · 待機 %2$d</string>
+
+    <!-- 宏：录制浮动条按钮 -->
+    <string name="macro_record_pause">一時停止</string>
+    <string name="macro_record_resume">再開</string>
+    <string name="macro_record_stop">停止</string>
+    <string name="macro_record_save">保存</string>
+    <string name="macro_record_confirm_discard">この記録を破棄しますか？</string>
+    <string name="macro_record_discard">破棄</string>
+    <string name="macro_record_keep">残す</string>
+
+    <!-- 宏：录制结果提示 -->
+    <string name="macro_record_nothing">まだ操作が記録されていません。</string>
+    <string name="macro_record_saved">マクロを保存しました：%1$s</string>
+</resources>

@@ -9,7 +9,6 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
 import com.slideindex.app.R
 import com.slideindex.app.settings.AppSettings
@@ -23,6 +22,15 @@ import com.slideindex.app.ui.settings.components.settingsCardScopeItem
 import com.slideindex.app.ui.settings.components.settingsLazySmallTitle
 import com.slideindex.app.ui.settings.components.settingsLazyTipCard
 
+/** 下拉框按枚举顺序展示，文案走资源，别再在这里写死中文。 */
+private val DragDropFlowPosition.labelRes: Int
+    get() = when (this) {
+        DragDropFlowPosition.BOTTOM -> R.string.drag_drop_flow_position_bottom
+        DragDropFlowPosition.LEFT -> R.string.drag_drop_flow_position_left
+        DragDropFlowPosition.RIGHT -> R.string.drag_drop_flow_position_right
+        DragDropFlowPosition.RING -> R.string.drag_drop_flow_position_ring
+    }
+
 @Composable
 fun DragDropFlowSettingsScreen(
     settings: AppSettings,
@@ -35,21 +43,23 @@ fun DragDropFlowSettingsScreen(
     onOpenFileShareEngines: (() -> Unit)? = null,
 ) {
     val currentPosition = settings.dragDropFlowPosition
-    val positionLabels = listOf(
-        "底边横向（默认）",
-        "左侧纵向",
-        "右侧纵向",
-        "环形罗盘（居中）",
-    )
-    val positionIndex = currentPosition.id.coerceIn(0, 3)
+    val positionLabels = DragDropFlowPosition.entries.map { stringResource(it.labelRes) }
+    val positionIndex = currentPosition.id.coerceIn(0, DragDropFlowPosition.entries.lastIndex)
+
+    // LazyListScope 顶层（settingsLazySmallTitle / settingsLazyTipCard）不是 @Composable 上下文，
+    // 文案必须在这里先取出来。
+    val sectionBasic = stringResource(R.string.drag_drop_flow_section_basic)
+    val sectionLayout = stringResource(R.string.drag_drop_flow_section_layout)
+    val sectionTargets = stringResource(R.string.drag_drop_flow_section_targets)
+    val guideText = stringResource(R.string.drag_drop_flow_guide)
 
     SettingsScreenScaffold(
-        title = "全局拖拽流转",
+        title = stringResource(R.string.drag_drop_flow_title),
         onBack = onBack,
     ) {
         settingsLazySmallTitle(
             key = "drag_drop_flow_basic_section",
-            title = "基础功能",
+            title = sectionBasic,
         )
         groupedCardItems(
             keyPrefix = "drag_drop_flow_basic",
@@ -57,8 +67,8 @@ fun DragDropFlowSettingsScreen(
                 add(
                     settingsCardScopeItem("switch") {
                         SettingSwitchRow(
-                            title = "启用全局拖拽流转",
-                            subtitle = "在任意应用长按图片或文字开始拖拽时，屏幕边缘自动滑出流转搜索栏",
+                            title = stringResource(R.string.drag_drop_flow_enable_title),
+                            subtitle = stringResource(R.string.drag_drop_flow_enable_summary),
                             icon = { label: String -> Icon(Icons.Outlined.PowerSettingsNew, contentDescription = label) },
                             checked = settings.dragDropFlowEnabled,
                             enabled = true,
@@ -71,7 +81,7 @@ fun DragDropFlowSettingsScreen(
 
         settingsLazySmallTitle(
             key = "drag_drop_flow_layout_section",
-            title = "外观与位置",
+            title = sectionLayout,
         )
         groupedCardItems(
             keyPrefix = "drag_drop_flow_layout",
@@ -79,8 +89,8 @@ fun DragDropFlowSettingsScreen(
                 add(
                     settingsCardScopeItem("position") {
                         SettingDropdownRow(
-                            title = "流转栏显示位置",
-                            subtitle = "条状栏贴哪条边；选「环形罗盘」则改为屏幕中央的圆盘，一圈排开全部目标",
+                            title = stringResource(R.string.drag_drop_flow_position_title),
+                            subtitle = stringResource(R.string.drag_drop_flow_position_summary),
                             items = positionLabels,
                             selectedIndex = positionIndex,
                             enabled = settings.dragDropFlowEnabled,
@@ -95,8 +105,8 @@ fun DragDropFlowSettingsScreen(
                 add(
                     settingsCardScopeItem("haptic") {
                         SettingSwitchRow(
-                            title = "触觉震动反馈",
-                            subtitle = "拖动至应用图标、取消或恢复按钮时提供细腻震动",
+                            title = stringResource(R.string.drag_drop_flow_haptic_title),
+                            subtitle = stringResource(R.string.drag_drop_flow_haptic_summary),
                             icon = { label: String -> Icon(Icons.Outlined.Vibration, contentDescription = label) },
                             checked = settings.dragDropFlowHapticEnabled,
                             enabled = settings.dragDropFlowEnabled,
@@ -109,7 +119,7 @@ fun DragDropFlowSettingsScreen(
 
         settingsLazySmallTitle(
             key = "drag_drop_flow_targets_section",
-            title = "流转目标管理",
+            title = sectionTargets,
         )
         groupedCardItems(
             keyPrefix = "drag_drop_flow_targets",
@@ -118,8 +128,8 @@ fun DragDropFlowSettingsScreen(
                     add(
                         settingsCardScopeItem("text_engines") {
                             SettingNavigationRow(
-                                title = "文字搜索引擎",
-                                subtitle = "拖拽文字时呼出的默认搜索、翻译与快捷动作",
+                                title = stringResource(R.string.drag_drop_flow_text_engines_title),
+                                subtitle = stringResource(R.string.drag_drop_flow_text_engines_summary),
                                 icon = { label: String -> Icon(Icons.Outlined.Search, contentDescription = label) },
                                 enabled = settings.dragDropFlowEnabled,
                                 onClick = onOpenTextSearchEngines,
@@ -131,8 +141,8 @@ fun DragDropFlowSettingsScreen(
                     add(
                         settingsCardScopeItem("image_engines") {
                             SettingNavigationRow(
-                                title = "图片搜索引擎",
-                                subtitle = "拖拽图片时呼出的以图搜图及购物、社交分享目标",
+                                title = stringResource(R.string.drag_drop_flow_image_engines_title),
+                                subtitle = stringResource(R.string.drag_drop_flow_image_engines_summary),
                                 icon = { label: String -> Icon(Icons.Outlined.ImageSearch, contentDescription = label) },
                                 enabled = settings.dragDropFlowEnabled,
                                 onClick = onOpenImageSearchEngines,
@@ -144,8 +154,8 @@ fun DragDropFlowSettingsScreen(
                     add(
                         settingsCardScopeItem("file_targets") {
                             SettingNavigationRow(
-                                title = "文件分享引擎",
-                                subtitle = "管理拖拽音频或文件时的流转分享应用与排序",
+                                title = stringResource(R.string.drag_drop_flow_file_engines_title),
+                                subtitle = stringResource(R.string.drag_drop_flow_file_engines_summary),
                                 icon = { label: String -> Icon(Icons.Outlined.FolderShared, contentDescription = label) },
                                 enabled = settings.dragDropFlowEnabled,
                                 onClick = onOpenFileShareEngines,
@@ -158,7 +168,7 @@ fun DragDropFlowSettingsScreen(
 
         settingsLazyTipCard(
             key = "drag_drop_flow_guide_tip",
-            text = "• 触发方式：在微信、相册、浏览器或任意支持系统拖拽的应用中，长按文字或图片拖动即可激活流转栏。\n• 边缘滚动：当引擎项目较多时，拖拽至流转栏两侧边缘即可自动平滑滚动。\n• 放弃与取消：拖动到「取消」按钮松手，可直接取消本次流转且不打扰原应用；拖至「恢复」可保持原状态。",
+            text = guideText,
         )
     }
 }

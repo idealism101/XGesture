@@ -159,16 +159,17 @@ fun ExtensionHubScreen(
                     settingsCardScopeItem("drag-drop-flow") {
                         val flowSub = if (settings.dragDropFlowEnabled) {
                             when (settings.dragDropFlowPositionId) {
-                                1 -> "已开启 · 左侧纵向"
-                                2 -> "已开启 · 右侧纵向"
-                                else -> "已开启 · 底边横向"
+                                1 -> stringResource(R.string.drag_drop_flow_hub_status_left)
+                                2 -> stringResource(R.string.drag_drop_flow_hub_status_right)
+                                3 -> stringResource(R.string.drag_drop_flow_hub_status_ring)
+                                else -> stringResource(R.string.drag_drop_flow_hub_status_bottom)
                             }
                         } else {
-                            "未启用 · 长按拖拽快速流转与图搜"
+                            stringResource(R.string.drag_drop_flow_hub_status_off)
                         }
                         SettingNavigationRow(
                             icon = { label -> Icon(ThinActionIcons.Drag, contentDescription = label) },
-                            title = "全局拖拽流转",
+                            title = stringResource(R.string.drag_drop_flow_title),
                             subtitle = flowSub,
                             onClick = onOpenDragDropFlow,
                         )

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 扩展 Hub 入口 -->
+    <string name="macro_entry_title">ジェスチャーマクロ</string>
+    <string name="macro_entry_desc">ほかのアプリでのタップとスワイプの並びを記録し、1 つのジェスチャーで再生します。</string>
+
+    <!-- 列表页 -->
+    <string name="macro_list_title">ジェスチャーマクロ</string>
+    <string name="macro_list_hint">マクロは対象アプリ内で動く、タップ・スワイプ・待機のスクリプトです。行をタップすると編集、長押しすると削除できます。</string>
+    <string name="macro_search_hint">マクロを検索…</string>
+    <string name="macro_list_empty">マクロはまだありません</string>
+    <string name="macro_list_no_match">この検索に一致するマクロはありません</string>
+    <string name="macro_create">新しいマクロ</string>
+    <string name="macro_row_summary">%1$s - 操作 %2$d 個</string>
+
+    <!-- 删除确认 -->
+    <string name="macro_delete_title">マクロを削除</string>
+    <string name="macro_delete_message">「%1$s」を削除しますか？この操作は元に戻せません。</string>
+    <string name="macro_delete_confirm">削除</string>
+
+    <!-- 新建 / 编辑页 -->
+    <string name="macro_editor_title">マクロを編集</string>
+    <string name="macro_section_basic">基本</string>
+    <string name="macro_section_record">記録</string>
+    <string name="macro_name_label">マクロ名</string>
+    <string name="macro_target_label">対象アプリ</string>
+    <string name="macro_target_none">未選択</string>
+    <string name="macro_target_value">%1$s · %2$s</string>
+    <string name="macro_start_recording">記録を開始</string>
+    <string name="macro_recording">記録中</string>
+    <string name="macro_start_recording_desc">対象アプリを開き、そこでの操作を記録します。</string>
+    <string name="macro_save">保存</string>
+    <string name="macro_help_idle">記録を開始すると対象アプリが開きます。普段どおり操作し、終わったらフローティングバーの保存をタップしてください。</string>
+    <string name="macro_help_recording">記録中：対象アプリを操作し、フローティングバーの保存をタップするとここに戻ります。</string>
+    <string name="macro_error_name_required">マクロ名を入力してください</string>
+
+    <!-- 目标 App 选择页 -->
+    <string name="macro_target_pick_title">対象アプリ</string>
+    <string name="macro_target_pick_subtitle">ホーム画面から起動できるアプリだけが表示されます。</string>
+    <string name="macro_target_empty">起動できるアプリが見つかりません</string>
+    <string name="macro_target_selected">選択中 · %1$s</string>
+
+    <!-- 录制器接线状态 -->
+    <string name="macro_recording_unavailable">このビルドではまだ記録を利用できません</string>
+    <string name="macro_recording_start_failed">記録を開始できませんでした</string>
+    <string name="macro_recording_saved">記録を保存しました：%1$d ステップ</string>
+    <string name="macro_recording_empty">操作が記録されませんでした</string>
+</resources>

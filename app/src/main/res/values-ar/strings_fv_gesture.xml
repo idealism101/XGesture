@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FooView（FV 悬浮球）「自定义手势」移植版用到的文案。
+     单独成文件是为了不把这几条塞进已经 4500 条的 strings.xml（仓库里 macro / page_scroll 也是这样分文件的）。 -->
+<resources>
+    <string name="fv_custom_gesture_title">إيماءات مخصصة</string>
+    <string name="fv_custom_gesture_summary">ارسم خطًا على الكرة العائمة لتشغيل إجراء</string>
+    <string name="fv_custom_gesture_section">إيماءات مخصصة</string>
+    <string name="fv_custom_gesture_add">إضافة إيماءة</string>
+    <string name="fv_custom_gesture_empty">لا توجد إيماءات مخصصة بعد — انقر على «+» لرسم واحدة.</string>
+    <string name="fv_custom_gesture_edit">تعديل</string>
+    <string name="fv_custom_gesture_delete">حذف</string>
+    <string name="fv_custom_gesture_delete_title">حذف الإيماءة؟</string>
+    <string name="fv_custom_gesture_delete_message">ستُحذف هذه الإيماءة ونظيرتها المعكوسة معًا.</string>
+    <string name="fv_custom_gesture_mirror_badge">إيماءة معكوسة</string>
+    <string name="fv_custom_gesture_dialog_title">إيماءة</string>
+    <string name="fv_custom_gesture_action_row">الإجراء</string>
+    <string name="fv_custom_gesture_action_none">بلا</string>
+    <string name="fv_custom_gesture_mirror_row">إضافة الإيماءة المعكوسة أيضًا</string>
+    <string name="fv_custom_gesture_conflict_message">هذه الإيماءة مخصّصة بالفعل لـ «%1$s». ارسم شكلًا مختلفًا، أو غيّر تلك أولًا.</string>
+    <string name="fv_custom_gesture_failed_title">فشل</string>
+    <string name="fv_custom_gesture_straight_line">الخط المستقيم يتعارض مع إيماءات السحب المدمجة. ارسم زاوية أو منحنى بدلًا من ذلك.</string>
+    <string name="fv_custom_gesture_need_gesture">ارسم إيماءة أولًا.</string>
+    <string name="fv_custom_gesture_need_action">اختر إجراءً أولًا.</string>
+    <string name="fv_custom_gesture_save_failed">تعذّر حفظ الإيماءة.</string>
+    <string name="fv_hint_suffix_free_window">- نافذة حرة</string>
+    <string name="fv_hint_suffix_fullscreen">- ملء الشاشة</string>
+</resources>

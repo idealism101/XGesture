@@ -12,6 +12,12 @@ The default `values/` file(s) of each module are the source of truth for resourc
 `values-<locale>/` directory must define the same set of names, except entries marked
 `translatable="false"`.
 
+The per-module loop used to read a hardcoded `("strings.xml", "plurals.xml")` pair, which
+exempted every resource file split out of `strings.xml`: 176 keys across seven files
+(`macro*`, `page_scroll`, `fv_gesture`, `quickmenu_macro`, `file_browser`) were absent from
+`values-ja` and `values-ar` while this check printed OK. It now walks every `values/*.xml`, and
+those seven files have since been translated, so a missing key anywhere is a hard failure.
+
 Structure checks are also run here because Android rejects nested resource elements with
 "Unrecognized tag" only at AAPT2 time, several minutes into a Gradle build. Catching it in
 milliseconds locally is worth the few lines.
@@ -241,10 +247,12 @@ def check_module(res_dir: Path, repo_root: Path):
     if not locales:
         return
 
-    for filename in ("strings.xml", "plurals.xml"):
-        default_path = default_dir / filename
-        if not default_path.is_file():
-            continue
+    # Every default-locale XML file, not just `strings.xml` / `plurals.xml`: resources get split
+    # into per-feature files (`strings_page_scroll.xml`, `strings_drag_drop_flow.xml`, …), and a
+    # hardcoded filename list silently exempted all of them — 176 keys were missing from
+    # values-ja / values-ar while this script printed OK.
+    for default_path in sorted(default_dir.glob("*.xml")):
+        filename = default_path.name
         default_entries, problems = parse_values(default_path)
         for problem in problems:
             yield "error", f"{default_path.relative_to(repo_root)}: {problem}"

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 快捷菜单里「运行宏」页用到的新文案 -->
+<resources>
+    <string name="quick_menu_macro_desc">اختر ماكرو مسجّلًا وشغّله</string>
+    <string name="quick_menu_macro_empty">لا يوجد ماكرو بعد. أنشئ واحدًا من الإضافات ← الإيماءات ← الماكرو.</string>
+</resources>

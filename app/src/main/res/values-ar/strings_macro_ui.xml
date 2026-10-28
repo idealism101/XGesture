@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 扩展 Hub 入口 -->
+    <string name="macro_entry_title">ماكرو الإيماءات</string>
+    <string name="macro_entry_desc">سجّل سلسلة من النقرات والسحب في تطبيق آخر، ثم أعد تشغيلها بإيماءة واحدة.</string>
+
+    <!-- 列表页 -->
+    <string name="macro_list_title">ماكرو الإيماءات</string>
+    <string name="macro_list_hint">الماكرو نص برمجي من النقرات والسحب والانتظار يعمل داخل التطبيق الهدف. انقر على صف لتعديله، واضغط مطوّلًا لحذفه.</string>
+    <string name="macro_search_hint">البحث في الماكرو…</string>
+    <string name="macro_list_empty">لا يوجد ماكرو بعد</string>
+    <string name="macro_list_no_match">لا يوجد ماكرو يطابق هذا البحث</string>
+    <string name="macro_create">ماكرو جديد</string>
+    <string name="macro_row_summary">%1$s - %2$d إجراء</string>
+
+    <!-- 删除确认 -->
+    <string name="macro_delete_title">حذف الماكرو</string>
+    <string name="macro_delete_message">هل تريد حذف «%1$s»؟ لا يمكن التراجع عن هذا.</string>
+    <string name="macro_delete_confirm">حذف</string>
+
+    <!-- 新建 / 编辑页 -->
+    <string name="macro_editor_title">تعديل الماكرو</string>
+    <string name="macro_section_basic">الأساسيات</string>
+    <string name="macro_section_record">التسجيل</string>
+    <string name="macro_name_label">اسم الماكرو</string>
+    <string name="macro_target_label">التطبيق الهدف</string>
+    <string name="macro_target_none">لم يتم الاختيار</string>
+    <string name="macro_target_value">%1$s · %2$s</string>
+    <string name="macro_start_recording">بدء التسجيل</string>
+    <string name="macro_recording">جارٍ التسجيل</string>
+    <string name="macro_start_recording_desc">يفتح التطبيق الهدف ويسجّل ما تفعله فيه.</string>
+    <string name="macro_save">حفظ</string>
+    <string name="macro_help_idle">يؤدي بدء التسجيل إلى فتح التطبيق الهدف. استخدمه كالمعتاد، وعند الانتهاء انقر على حفظ في الشريط العائم.</string>
+    <string name="macro_help_recording">جارٍ التسجيل: استخدم التطبيق الهدف، ثم انقر على حفظ في الشريط العائم للعودة إلى هنا.</string>
+    <string name="macro_error_name_required">أدخل اسم الماكرو</string>
+
+    <!-- 目标 App 选择页 -->
+    <string name="macro_target_pick_title">التطبيق الهدف</string>
+    <string name="macro_target_pick_subtitle">تُعرض فقط التطبيقات التي يمكن تشغيلها من الشاشة الرئيسية.</string>
+    <string name="macro_target_empty">لم يُعثر على تطبيق قابل للتشغيل</string>
+    <string name="macro_target_selected">المحدد · %1$s</string>
+
+    <!-- 录制器接线状态 -->
+    <string name="macro_recording_unavailable">التسجيل غير متاح في هذا الإصدار بعد</string>
+    <string name="macro_recording_start_failed">تعذّر بدء التسجيل</string>
+    <string name="macro_recording_saved">تم حفظ التسجيل: %1$d خطوة</string>
+    <string name="macro_recording_empty">لم يُسجَّل أي إجراء</string>
+</resources>

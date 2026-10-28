@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 宏：执行期提示 -->
+    <string name="macro_run_requires_android_n">يتطلب الماكرو Android 7.0 أو أحدث.</string>
+    <string name="macro_run_already_running">هناك ماكرو قيد التشغيل بالفعل.</string>
+    <string name="macro_run_service_unavailable">خدمة إمكانية الوصول غير متصلة.</string>
+    <string name="macro_run_target_not_found">تعذّر فتح التطبيق الهدف.</string>
+    <string name="macro_run_app_timeout">لم يظهر التطبيق الهدف في المقدمة في الوقت المناسب.</string>
+    <string name="macro_run_foreground_changed">توقف الماكرو: تغيّر التطبيق في المقدمة.</string>
+    <string name="macro_run_step_failed">فشلت خطوة الماكرو: %1$s</string>
+    <string name="macro_run_completed">انتهى الماكرو: %1$s</string>
+    <string name="macro_record_touch_unavailable">توقف التسجيل: إعادة تشغيل اللمس غير متاحة على هذا الجهاز.</string>
+    <string name="macro_record_stopped_screen_off">توقف التسجيل لأن الشاشة أُطفئت.</string>
+    <string name="macro_record_stopped_timeout">توقف التسجيل تلقائيًا (بقي مفتوحًا مدة طويلة).</string>
+
+    <!-- 宏：步骤名（失败提示里用） -->
+    <string name="macro_step_wait">انتظار</string>
+    <string name="macro_step_tap">نقرة</string>
+    <string name="macro_step_swipe">سحب</string>
+
+    <!-- 宏：动作条目 -->
+    <string name="macro_action_run_macro">ماكرو إيماءة</string>
+    <string name="macro_action_run_macro_named">ماكرو إيماءة: %1$s</string>
+    <string name="macro_action_run_macro_missing">ماكرو إيماءة (محذوف)</string>
+    <string name="macro_pick_empty">لا يوجد ماكرو إيماءة بعد. أنشئ واحدًا من الإضافات ← ماكرو الإيماءات أولًا.</string>
+    <string name="macro_test_run">تجربة التشغيل</string>
+    <string name="macro_test_run_desc">يشغّل هذا الماكرو مرة واحدة الآن دون ربطه بإيماءة.</string>
+</resources>

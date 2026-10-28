@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FooView（FV 悬浮球）「自定义手势」移植版用到的文案。
+     单独成文件是为了不把这几条塞进已经 4500 条的 strings.xml（仓库里 macro / page_scroll 也是这样分文件的）。 -->
+<resources>
+    <string name="fv_custom_gesture_title">カスタムジェスチャー</string>
+    <string name="fv_custom_gesture_summary">フローティングボールに線を描くとアクションを実行します</string>
+    <string name="fv_custom_gesture_section">カスタムジェスチャー</string>
+    <string name="fv_custom_gesture_add">ジェスチャーを追加</string>
+    <string name="fv_custom_gesture_empty">カスタムジェスチャーはまだありません。「＋」をタップして描いてください。</string>
+    <string name="fv_custom_gesture_edit">編集</string>
+    <string name="fv_custom_gesture_delete">削除</string>
+    <string name="fv_custom_gesture_delete_title">ジェスチャーを削除しますか？</string>
+    <string name="fv_custom_gesture_delete_message">このジェスチャーと鏡像のジェスチャーの両方が削除されます。</string>
+    <string name="fv_custom_gesture_mirror_badge">鏡像ジェスチャー</string>
+    <string name="fv_custom_gesture_dialog_title">ジェスチャー</string>
+    <string name="fv_custom_gesture_action_row">アクション</string>
+    <string name="fv_custom_gesture_action_none">なし</string>
+    <string name="fv_custom_gesture_mirror_row">鏡像のジェスチャーも追加する</string>
+    <string name="fv_custom_gesture_conflict_message">このジェスチャーはすでに「%1$s」に割り当てられています。別の形を描くか、そちらを先に変更してください。</string>
+    <string name="fv_custom_gesture_failed_title">失敗</string>
+    <string name="fv_custom_gesture_straight_line">直線は組み込みのスワイプジェスチャーと競合します。角や曲線を描いてください。</string>
+    <string name="fv_custom_gesture_need_gesture">先にジェスチャーを描いてください。</string>
+    <string name="fv_custom_gesture_need_action">先にアクションを選んでください。</string>
+    <string name="fv_custom_gesture_save_failed">ジェスチャーを保存できませんでした。</string>
+    <string name="fv_hint_suffix_free_window">- フリーウィンドウ</string>
+    <string name="fv_hint_suffix_fullscreen">- 全画面</string>
+</resources>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 页面滚动（独立资源文件，避免改动现有 strings.xml）。 -->
+<resources>
+    <string name="page_scroll_action_name">ページスクロール</string>
+    <string name="page_scroll_action_description">ページをなめらかにスクロールし続けるフローティングバーを開きます。一時停止するか閉じるまで動作します。</string>
+
+    <string name="page_scroll_reverse_direction">スクロール方向を反転</string>
+    <string name="page_scroll_slower">スクロールを遅く</string>
+    <string name="page_scroll_faster">スクロールを速く</string>
+    <string name="page_scroll_pause">スクロールを一時停止</string>
+    <string name="page_scroll_resume">スクロールを再開</string>
+    <string name="page_scroll_close">スクロールバーを閉じる</string>
+
+    <string name="page_scroll_unavailable">この画面にはスクロールできる内容がありません。</string>
+    <string name="page_scroll_service_unavailable">アクセシビリティサービスが動作していません。</string>
+    <string name="page_scroll_requires_android_n">なめらかなスクロールには Android 7.0 以降が必要です。</string>
+
+    <string name="page_scroll_prefs_title">ページスクロール</string>
+    <string name="page_scroll_prefs_behavior">動作</string>
+    <string name="page_scroll_prefs_appearance">外観</string>
+    <string name="page_scroll_mode_title">スクロール方式</string>
+    <string name="page_scroll_mode_auto">なめらかスクロール</string>
+    <string name="page_scroll_mode_auto_description">指を離したあともスクロールを続けます。フローティングバーで方向と速度の変更、一時停止、終了ができます。</string>
+    <string name="page_scroll_mode_hold_drag">長押ししてドラッグ</string>
+    <string name="page_scroll_mode_hold_drag_description">端を押し続けたまま上下に動かすと、1 ページずつスクロールします。</string>
+    <string name="page_scroll_speed_title">既定のスクロール速度</string>
+    <string name="page_scroll_speed_value">速度 %1$d / %2$d</string>
+    <string name="page_scroll_bar_color_title">バーの色</string>
+    <string name="page_scroll_bar_color_dark">ダークグレー</string>
+    <string name="page_scroll_bar_color_black">ブラック</string>
+    <string name="page_scroll_bar_color_white">ホワイト</string>
+    <string name="page_scroll_bar_use_accent_title">アクセントカラーを使う</string>
+    <string name="page_scroll_bar_use_accent_subtitle">バーのボタンを現在のアプリのアクセントカラーに合わせます。</string>
+</resources>

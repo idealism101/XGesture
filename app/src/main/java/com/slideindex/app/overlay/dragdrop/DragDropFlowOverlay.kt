@@ -187,7 +187,7 @@ class DragDropFlowController(
         this.anchorParams = anchor
         this.isExpanded = false
 
-        Log.d(TAG, "DragDropFlow anchor window attached (1px待机)")
+        Log.d(TAG, "DragDropFlow anchor window attached (1px idle)")
         return true
     }
 
@@ -296,13 +296,13 @@ class DragDropFlowController(
 
                 when {
                     targetId == "__cancel__" -> {
-                        Toast.makeText(context, "已取消拖拽", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.drag_drop_flow_toast_cancelled), Toast.LENGTH_SHORT).show()
                         if (ScreenDrawOverlay.isShowing) {
                             ScreenDrawOverlay.dismiss()
                         }
                     }
                     targetId == "__restore__" -> {
-                        Toast.makeText(context, "已恢复", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.drag_drop_flow_toast_restored), Toast.LENGTH_SHORT).show()
                         if (ScreenDrawOverlay.isShowing) {
                             ScreenDrawOverlay.restoreFromDragFlow()
                         }
@@ -389,7 +389,7 @@ class DragDropFlowController(
             list.add(
                 DragDropFlowItem(
                     id = "builtin_image_search",
-                    title = "以图搜图",
+                    title = context.getString(R.string.drag_drop_flow_target_image_search),
                     iconVector = Icons.Outlined.ImageSearch,
                     iconTintColor = Color(0xFF2196F3),
                 )
@@ -416,7 +416,7 @@ class DragDropFlowController(
             list.add(
                 DragDropFlowItem(
                     id = "copy_image",
-                    title = "复制图片",
+                    title = context.getString(R.string.drag_drop_flow_target_copy_image),
                     iconVector = Icons.Outlined.ContentCopy,
                     iconTintColor = Color(0xFF4CAF50),
                 )
@@ -426,7 +426,7 @@ class DragDropFlowController(
             list.add(
                 DragDropFlowItem(
                     id = "system_share_image",
-                    title = "分享图片",
+                    title = context.getString(R.string.drag_drop_flow_target_share_image),
                     iconVector = Icons.Outlined.Share,
                     iconTintColor = Color(0xFFFF9800),
                 )
@@ -454,7 +454,7 @@ class DragDropFlowController(
             list.add(
                 DragDropFlowItem(
                     id = "system_share_file",
-                    title = "分享文件",
+                    title = context.getString(R.string.drag_drop_flow_target_share_file),
                     iconVector = Icons.Outlined.Share,
                     iconTintColor = Color(0xFFFF9800),
                 )
@@ -481,7 +481,7 @@ class DragDropFlowController(
             list.add(
                 DragDropFlowItem(
                     id = "translate_text",
-                    title = "翻译",
+                    title = context.getString(R.string.drag_drop_flow_target_translate),
                     iconVector = Icons.Outlined.Translate,
                     iconTintColor = Color(0xFF9C27B0),
                 )
@@ -491,7 +491,7 @@ class DragDropFlowController(
             list.add(
                 DragDropFlowItem(
                     id = "copy_text",
-                    title = "复制文字",
+                    title = context.getString(R.string.drag_drop_flow_target_copy_text),
                     iconVector = Icons.Outlined.ContentCopy,
                     iconTintColor = Color(0xFF4CAF50),
                 )
@@ -501,7 +501,7 @@ class DragDropFlowController(
             list.add(
                 DragDropFlowItem(
                     id = "system_share_text",
-                    title = "分享文字",
+                    title = context.getString(R.string.drag_drop_flow_target_share_text),
                     iconVector = Icons.Outlined.Share,
                     iconTintColor = Color(0xFFFF9800),
                 )
@@ -524,7 +524,7 @@ class DragDropFlowController(
                         if (bitmap != null) {
                             FloatBallImageSearchPanel.show(context, bitmap)
                         } else {
-                            Toast.makeText(context, "无法读取拖放的图片", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.drag_drop_flow_toast_image_unreadable), Toast.LENGTH_SHORT).show()
                         }
                     }
                     targetId.startsWith("image_engine_") && uri != null -> {
@@ -535,7 +535,7 @@ class DragDropFlowController(
                         if (engine != null && bitmap != null) {
                             val launched = SearchEngineLauncher.launchImageShare(context, engine, bitmap)
                             if (!launched) {
-                                Toast.makeText(context, "无法唤起目标应用", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.drag_drop_flow_toast_launch_failed), Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
@@ -547,7 +547,7 @@ class DragDropFlowController(
                         if (pkg != null) {
                             val forwarded = stageForForward(uri)
                             if (forwarded == null) {
-                                Toast.makeText(context, "无法读取拖放的文件", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.drag_drop_flow_toast_file_unreadable), Toast.LENGTH_SHORT).show()
                             } else {
                                 val sendIntent = Intent(Intent.ACTION_SEND).apply {
                                     type = forwarded.intentType
@@ -561,14 +561,14 @@ class DragDropFlowController(
                                     }
                                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 }
-                                startShare(sendIntent, "分享文件")
+                                startShare(sendIntent, context.getString(R.string.drag_drop_flow_target_share_file))
                             }
                         }
                     }
                     targetId == "system_share_file" && uri != null -> {
                         val forwarded = stageForForward(uri)
                         if (forwarded == null) {
-                            Toast.makeText(context, "无法读取拖放的文件", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.drag_drop_flow_toast_file_unreadable), Toast.LENGTH_SHORT).show()
                         } else {
                             val intent = Intent(Intent.ACTION_SEND).apply {
                                 type = forwarded.intentType
@@ -576,7 +576,7 @@ class DragDropFlowController(
                                 this.clipData = forwarded.clipData
                                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
-                            startChooser(intent, "分享文件")
+                            startChooser(intent, context.getString(R.string.drag_drop_flow_target_share_file))
                         }
                     }
                     targetId == "copy_image" && uri != null -> {
@@ -595,7 +595,7 @@ class DragDropFlowController(
                                     putExtra(Intent.EXTRA_STREAM, shareUri)
                                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 }
-                                context.startActivity(Intent.createChooser(intent, "分享图片").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                context.startActivity(Intent.createChooser(intent, context.getString(R.string.drag_drop_flow_target_share_image)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                             }
                         }
                     }
@@ -605,12 +605,12 @@ class DragDropFlowController(
                         if (engine != null) {
                             SearchEngineLauncher.launch(context, engine, text, latestSettings)
                         } else {
-                            Toast.makeText(context, "这个目标已不在流转栏里", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.drag_drop_flow_toast_target_missing), Toast.LENGTH_SHORT).show()
                         }
                     }
                     targetId == "copy_text" && !text.isNullOrBlank() -> {
                         FloatBallTextPick.copyText(context, text)
-                        Toast.makeText(context, "已复制文字到剪贴板", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.drag_drop_flow_toast_text_copied), Toast.LENGTH_SHORT).show()
                     }
                     targetId == "translate_text" && !text.isNullOrBlank() -> {
                         FloatBallTextPick.translateText(context, text, "zh-CN")
@@ -621,7 +621,7 @@ class DragDropFlowController(
                             putExtra(Intent.EXTRA_TEXT, text)
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
-                        context.startActivity(Intent.createChooser(intent, "分享文字").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        context.startActivity(Intent.createChooser(intent, context.getString(R.string.drag_drop_flow_target_share_text)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                     }
                 }
             }
@@ -766,7 +766,7 @@ class DragDropFlowController(
             )
         }.onFailure {
             Log.w(TAG, "chooser failed", it)
-            Toast.makeText(context, "分享失败", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.drag_drop_flow_toast_share_failed), Toast.LENGTH_SHORT).show()
         }
     }
 

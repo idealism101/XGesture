@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 宏：执行期提示 -->
+    <string name="macro_run_requires_android_n">マクロには Android 7.0 以降が必要です。</string>
+    <string name="macro_run_already_running">マクロはすでに実行中です。</string>
+    <string name="macro_run_service_unavailable">アクセシビリティサービスが接続されていません。</string>
+    <string name="macro_run_target_not_found">対象のアプリを開けません。</string>
+    <string name="macro_run_app_timeout">対象アプリが時間内に前面に来ませんでした。</string>
+    <string name="macro_run_foreground_changed">マクロを停止しました：前面のアプリが変わりました。</string>
+    <string name="macro_run_step_failed">マクロのステップに失敗しました：%1$s</string>
+    <string name="macro_run_completed">マクロが完了しました：%1$s</string>
+    <string name="macro_record_touch_unavailable">記録を停止しました：この端末ではタッチの再生を利用できません。</string>
+    <string name="macro_record_stopped_screen_off">画面が消えたため記録を停止しました。</string>
+    <string name="macro_record_stopped_timeout">長時間開いたままのため、記録を自動で停止しました。</string>
+
+    <!-- 宏：步骤名（失败提示里用） -->
+    <string name="macro_step_wait">待機</string>
+    <string name="macro_step_tap">タップ</string>
+    <string name="macro_step_swipe">スワイプ</string>
+
+    <!-- 宏：动作条目 -->
+    <string name="macro_action_run_macro">ジェスチャーマクロ</string>
+    <string name="macro_action_run_macro_named">ジェスチャーマクロ：%1$s</string>
+    <string name="macro_action_run_macro_missing">ジェスチャーマクロ（削除済み）</string>
+    <string name="macro_pick_empty">ジェスチャーマクロがまだありません。先に「拡張機能 → ジェスチャーマクロ」で作成してください。</string>
+    <string name="macro_test_run">テスト実行</string>
+    <string name="macro_test_run_desc">ジェスチャーに割り当てずに、このマクロを今すぐ 1 回実行します。</string>
+</resources>

@@ -74,6 +74,7 @@ import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -81,6 +82,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.slideindex.app.R
 import com.slideindex.app.overlay.LocalFrostedGlassBackdrop
 import com.slideindex.app.settings.DragDropFlowPosition
 import kotlinx.coroutines.delay
@@ -319,12 +321,12 @@ private fun BottomFlowContent(
             modifier = Modifier.padding(bottom = 20.dp),
         ) {
             PillActionCapsule(
-                text = "恢复",
+                text = stringResource(R.string.drag_drop_flow_restore),
                 isHovered = hoveredId == "__restore__",
                 onPositioned = onRestorePositioned,
             )
             PillActionCapsule(
-                text = "取消",
+                text = stringResource(R.string.drag_drop_flow_cancel),
                 isHovered = hoveredId == "__cancel__",
                 onPositioned = onCancelPositioned,
             )
@@ -457,12 +459,12 @@ private fun SideFlowContent(
                 modifier = Modifier.padding(top = 16.dp),
             ) {
                 PillActionCapsule(
-                    text = "恢复",
+                    text = stringResource(R.string.drag_drop_flow_restore),
                     isHovered = hoveredId == "__restore__",
                     onPositioned = onRestorePositioned,
                 )
                 PillActionCapsule(
-                    text = "取消",
+                    text = stringResource(R.string.drag_drop_flow_cancel),
                     isHovered = hoveredId == "__cancel__",
                     onPositioned = onCancelPositioned,
                 )
@@ -585,7 +587,7 @@ private fun RingFlowContent(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = hoveredTitle ?: "松手分发",
+                    text = hoveredTitle ?: stringResource(R.string.drag_drop_flow_release_to_send),
                     fontSize = 12.sp,
                     fontWeight = if (hoveredTitle != null) FontWeight.Bold else FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.90f),
@@ -595,12 +597,12 @@ private fun RingFlowContent(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 PillActionCapsule(
-                    text = "恢复",
+                    text = stringResource(R.string.drag_drop_flow_restore),
                     isHovered = hoveredId == "__restore__",
                     onPositioned = onRestorePositioned,
                 )
                 PillActionCapsule(
-                    text = "取消",
+                    text = stringResource(R.string.drag_drop_flow_cancel),
                     isHovered = hoveredId == "__cancel__",
                     onPositioned = onCancelPositioned,
                 )

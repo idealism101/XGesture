@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 全局拖拽流转（独立资源文件，避免改动现有 strings.xml）。 -->
+<resources>
+    <string name="drag_drop_flow_title">Global drag &amp; drop flow</string>
+
+    <!-- 设置页 -->
+    <string name="drag_drop_flow_section_basic">Basics</string>
+    <string name="drag_drop_flow_enable_title">Enable global drag &amp; drop flow</string>
+    <string name="drag_drop_flow_enable_summary">Long-press an image or text in any app and start dragging: the flow bar slides in from the screen edge.</string>
+    <string name="drag_drop_flow_section_layout">Appearance and position</string>
+    <string name="drag_drop_flow_position_title">Flow bar position</string>
+    <string name="drag_drop_flow_position_summary">Which edge the bar hugs. Pick “Ring compass” to turn it into a disc in the middle of the screen with every target spread around it.</string>
+    <string name="drag_drop_flow_position_bottom">Bottom edge (default)</string>
+    <string name="drag_drop_flow_position_left">Left edge, vertical</string>
+    <string name="drag_drop_flow_position_right">Right edge, vertical</string>
+    <string name="drag_drop_flow_position_ring">Ring compass (centred)</string>
+    <string name="drag_drop_flow_haptic_title">Haptic feedback</string>
+    <string name="drag_drop_flow_haptic_summary">A subtle vibration when you hover a target, Cancel or Restore.</string>
+    <string name="drag_drop_flow_section_targets">Flow targets</string>
+    <string name="drag_drop_flow_text_engines_title">Text search engines</string>
+    <string name="drag_drop_flow_text_engines_summary">The default search, translation and quick actions offered when you drag text.</string>
+    <string name="drag_drop_flow_image_engines_title">Image search engines</string>
+    <string name="drag_drop_flow_image_engines_summary">Reverse image search, shopping and social sharing targets offered when you drag an image.</string>
+    <string name="drag_drop_flow_file_engines_title">File share engines</string>
+    <string name="drag_drop_flow_file_engines_summary">Manage which apps receive dragged audio or files, and in what order.</string>
+    <string name="drag_drop_flow_guide">• Trigger: in WeChat, Gallery, a browser or any app that supports system drag, long-press text or an image and drag to bring up the flow bar.\n• Edge scrolling: with many targets on the bar, drag to either of its edges and it scrolls smoothly by itself.\n• Discard and cancel: release over “Cancel” to drop this flow without disturbing the source app; release over “Restore” to keep everything as it was.</string>
+
+    <!-- 扩展中心入口状态副标题 -->
+    <string name="drag_drop_flow_hub_status_bottom">On · Bottom edge</string>
+    <string name="drag_drop_flow_hub_status_left">On · Left edge</string>
+    <string name="drag_drop_flow_hub_status_right">On · Right edge</string>
+    <string name="drag_drop_flow_hub_status_ring">On · Ring compass</string>
+    <string name="drag_drop_flow_hub_status_off">Off · Long-press and drag for quick flow and image search</string>
+
+    <!-- 流转栏 -->
+    <string name="drag_drop_flow_restore">Restore</string>
+    <string name="drag_drop_flow_cancel">Cancel</string>
+    <string name="drag_drop_flow_release_to_send">Release to send</string>
+
+    <!-- 流转目标 -->
+    <string name="drag_drop_flow_target_image_search">Image search</string>
+    <string name="drag_drop_flow_target_copy_image">Copy image</string>
+    <string name="drag_drop_flow_target_share_image">Share image</string>
+    <string name="drag_drop_flow_target_share_file">Share file</string>
+    <string name="drag_drop_flow_target_translate">Translate</string>
+    <string name="drag_drop_flow_target_copy_text">Copy text</string>
+    <string name="drag_drop_flow_target_share_text">Share text</string>
+
+    <!-- 操作结果提示 -->
+    <string name="drag_drop_flow_toast_cancelled">Drag cancelled</string>
+    <string name="drag_drop_flow_toast_restored">Restored</string>
+    <string name="drag_drop_flow_toast_image_unreadable">Can\'t read the dragged image</string>
+    <string name="drag_drop_flow_toast_file_unreadable">Can\'t read the dragged file</string>
+    <string name="drag_drop_flow_toast_launch_failed">Can\'t open the target app</string>
+    <string name="drag_drop_flow_toast_target_missing">That target is no longer in the flow bar</string>
+    <string name="drag_drop_flow_toast_text_copied">Text copied to clipboard</string>
+    <string name="drag_drop_flow_toast_share_failed">Sharing failed</string>
+</resources>

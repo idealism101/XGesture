@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 宏：录制浮动条 -->
+    <string name="macro_record_badge">ماكرو</string>
+    <string name="macro_record_running">جارٍ التسجيل</string>
+    <string name="macro_record_drag_handle">سحب</string>
+    <string name="macro_record_counts">الإجراءات %1$d</string>
+    <string name="macro_record_counts_with_waits">الإجراءات %1$d · الانتظار %2$d</string>
+
+    <!-- 宏：录制浮动条按钮 -->
+    <string name="macro_record_pause">إيقاف مؤقت</string>
+    <string name="macro_record_resume">متابعة</string>
+    <string name="macro_record_stop">إيقاف</string>
+    <string name="macro_record_save">حفظ</string>
+    <string name="macro_record_confirm_discard">هل تريد تجاهل هذا التسجيل؟</string>
+    <string name="macro_record_discard">تجاهل</string>
+    <string name="macro_record_keep">الاحتفاظ</string>
+
+    <!-- 宏：录制结果提示 -->
+    <string name="macro_record_nothing">لم تُسجَّل أي خطوة بعد.</string>
+    <string name="macro_record_saved">تم حفظ الماكرو: %1$s</string>
+</resources>

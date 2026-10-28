@@ -112,6 +112,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # The hardcoded-string guard diffs against the base commit, so it needs real history.
+          fetch-depth: 0
 
       - name: Set up Python 3
         uses: actions/setup-python@v7
@@ -122,6 +125,14 @@ jobs:
       # app/build.gradle.kts disables MissingTranslation / ExtraTranslation.
       - name: Check locale completeness & values structure
         run: python scripts/check-translations.py
+
+      # check-translations.py only sees resources that exist. This catches the other half: a
+      # Compose screen (or Toast) whose Chinese never became a resource at all — lint's
+      # HardcodedText ignores Compose literals, so nothing else would have noticed.
+      - name: Check for hardcoded Chinese in new Kotlin lines
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: python scripts/check-hardcoded-strings.py --diff "${BASE_SHA:-HEAD}"
 
   lint:
     if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]') }}
