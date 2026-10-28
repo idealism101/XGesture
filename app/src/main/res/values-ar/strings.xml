@@ -1246,7 +1246,10 @@
     <string name="quick_menu_pomodoro_title">مؤقت بومودورو</string>
     <string name="quick_menu_pomodoro_desc">تركيز 25 دقيقة ثم راحة 5 دقائق</string>
     <string name="quick_menu_color_title">لون الشاشة</string>
-    <string name="quick_menu_color_desc">التقط صورة للشاشة، واضغط على بكسل لنسخ قيمة لونه</string>
+    <string name="quick_menu_color_desc">التقاط اللون من الشاشة كاملة: اسحب المؤشر للاختيار، ثم انسخ بالزر</string>
+    <string name="quick_menu_color_start">التقاط لون من الشاشة</string>
+    <string name="quick_menu_color_pick_hint">اسحب لتحريك المؤشر، وأفلت لالتقاط اللون</string>
+    <string name="quick_menu_color_copied">تم النسخ</string>
     <string name="quick_menu_entry_fg_desc">اعرض تطبيق المقدمة والنشاط الحالي</string>
     <string name="quick_menu_entry_freezer_desc">افتح المجمّد (تجميد التطبيقات أو تعليقها)</string>
     <string name="quick_menu_entry_shell_desc">افتح لوحة أوامر Shell</string>

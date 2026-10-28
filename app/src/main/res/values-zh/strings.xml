@@ -1285,7 +1285,10 @@
     <string name="quick_menu_pomodoro_title">番茄钟</string>
     <string name="quick_menu_pomodoro_desc">专注 25 分钟，休息 5 分钟</string>
     <string name="quick_menu_color_title">屏幕取色</string>
-    <string name="quick_menu_color_desc">截图后点一下取色值，可复制</string>
+    <string name="quick_menu_color_desc">全屏取色：拖动准星选色，点按钮复制</string>
+    <string name="quick_menu_color_start">全屏取色</string>
+    <string name="quick_menu_color_pick_hint">拖动移动准星，松手取色</string>
+    <string name="quick_menu_color_copied">已复制</string>
     <string name="quick_menu_entry_fg_desc">查看当前前台应用与活动</string>
     <string name="quick_menu_entry_freezer_desc">打开冰箱（冻结/挂起应用）</string>
     <string name="quick_menu_entry_shell_desc">打开 Shell 命令面板</string>

@@ -70,6 +70,15 @@ object QuickMenuOverlayWindow {
          */
         val scanImage: MutableState<Bitmap?> = mutableStateOf(null)
 
+        /**
+         * 「屏幕取色」的状态（冻结帧、最近取到的色、历史、错误文案）。
+         *
+         * 和其它工具页不同，取色要**隐藏本窗口去截图、再把冻结帧铺满整屏**。这段过程里窗口可能
+         * 被系统摘掉重建（见类注释里的 Flyme 记录），状态放页面里会跟着丢；放在 Session 里，
+         * 恢复后仍能接着显示冻结帧与历史。
+         */
+        val colorPicker = QuickMenuColorPickerState()
+
         var settings: AppSettings = AppSettings()
     }
 
@@ -245,6 +254,8 @@ object QuickMenuOverlayWindow {
                 return@post
             }
             session?.visible?.value = false
+            // 全屏取色层带着一帧整屏位图（~10MB）：关面板就丢掉，别让"收起再打开"还停在一张旧截图上。
+            session?.colorPicker?.picking = null
             host.setInputActive(false)
             host.setTouchable(false)
             mainHandler.postDelayed({
@@ -270,6 +281,7 @@ object QuickMenuOverlayWindow {
                     scanContent = current.scanContent.value,
                     scanResults = current.scanResults.value,
                     scanImage = current.scanImage.value,
+                    colorPicker = current.colorPicker,
                     onQueryChange = { current.query.value = it },
                     onScanContentChange = { current.scanContent.value = it },
                     onScanResultsChange = { current.scanResults.value = it },
@@ -303,7 +315,7 @@ object QuickMenuOverlayWindow {
     }
 
     /**
-     * 返回键/返回手势：先退回工具列表，已经在列表上则关闭面板。
+     * 返回键/返回手势：先退出全屏取色，再退回工具列表；已经在列表上则关闭面板。
      *
      * 复用 [OverlayViewBackHandler] 而不是自己监听按键——它已经把"系统走 OnBackInvokedCallback
      * 还是走兼容 BACK 键注入"这个坑处理掉了（见该类的 §0.16.25 注释）。
@@ -311,6 +323,11 @@ object QuickMenuOverlayWindow {
     private fun handleBack() {
         val current = session ?: return
         if (current.page.value != null) {
+        // 全屏取色是"盖在工具页上的一层"：返回只退出这一层，回到取色结果页，不连菜单一起关。
+        if (current.colorPicker.picking != null) {
+            current.colorPicker.picking = null
+            return
+        }
             current.page.value = null
         } else {
             dismiss()

@@ -1263,7 +1263,10 @@
     <string name="quick_menu_pomodoro_title">ポモドーロ</string>
     <string name="quick_menu_pomodoro_desc">25 分集中して 5 分休憩</string>
     <string name="quick_menu_color_title">画面から色を取得</string>
-    <string name="quick_menu_color_desc">スクリーンショットを撮ってピクセルをタップし、色の値をコピー</string>
+    <string name="quick_menu_color_desc">全画面で色を取得：十字をドラッグして選び、ボタンでコピー</string>
+    <string name="quick_menu_color_start">全画面で色を取得</string>
+    <string name="quick_menu_color_pick_hint">ドラッグで十字を移動、離すと色を取得</string>
+    <string name="quick_menu_color_copied">コピーしました</string>
     <string name="quick_menu_entry_fg_desc">現在の前面アプリとアクティビティを表示</string>
     <string name="quick_menu_entry_freezer_desc">冷凍庫を開く（アプリの凍結・一時停止）</string>
     <string name="quick_menu_entry_shell_desc">Shell コマンドパネルを開く</string>

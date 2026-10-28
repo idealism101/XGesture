@@ -2442,7 +2442,10 @@
     <string name="quick_menu_pomodoro_title">Pomodoro</string>
     <string name="quick_menu_pomodoro_desc">25 minutes focus, 5 minutes break</string>
     <string name="quick_menu_color_title">Screen color</string>
-    <string name="quick_menu_color_desc">Take a screenshot, tap a pixel, copy the value</string>
+    <string name="quick_menu_color_desc">Full-screen picker: drag the reticle, tap copy</string>
+    <string name="quick_menu_color_start">Pick from screen</string>
+    <string name="quick_menu_color_pick_hint">Drag anywhere to move the reticle; release to sample</string>
+    <string name="quick_menu_color_copied">Copied</string>
     <string name="quick_menu_entry_fg_desc">Current foreground app and activity</string>
     <string name="quick_menu_entry_freezer_desc">Open the freezer (freeze or suspend apps)</string>
     <string name="quick_menu_entry_shell_desc">Open the shell command panel</string>

@@ -4,10 +4,12 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -27,8 +29,11 @@ import kotlin.math.roundToInt
 internal object QuickMenuColorPickerGeometry {
 
     /**
-     * 容器尺寸（像素）。前提是**容器与位图同比例**：容器按 `aspectRatio(位图宽/高)` 撑开，
-     * `ContentScale.Fit` 在同比例下正好铺满，所以没有 letterbox，映射就是一个纯缩放。
+     * 容器尺寸（像素）。
+     *
+     * 全屏取色时容器是**整块屏幕**，和截图的宽高比不一定相等（状态栏、导航栏、刘海都会让窗口
+     * 和位图差几个像素），所以映射不再能当作纯缩放——先由 [fitRect] 算出图实际画在哪块，
+     * 再用 [fitOffsetToPixel] 换算。
      */
     data class Viewport(val width: Int, val height: Int)
 
@@ -88,6 +93,60 @@ internal object QuickMenuColorPickerGeometry {
         } else {
             0
         }
+        return SamplePoint(x = safeX, y = safeY, viewX = viewX, viewY = viewY)
+    }
+
+    /**
+     * 位图按 `ContentScale.Fit` 铺进 [viewport] 后的实际矩形（视图像素坐标）。
+     *
+     * 全屏取色层铺的是**整块屏幕**：窗口含状态栏/导航栏/刘海，尺寸和截图不一定逐像素相等，
+     * 宽高比一差就会出黑边。取色必须知道"图到底画在哪块"，否则准星和放大镜都会偏。
+     *
+     * 退化尺寸（0 宽/0 高）返回全零矩形，调用方据此跳过换算，不能除零。
+     */
+    data class FitRect(val left: Float, val top: Float, val width: Float, val height: Float)
+
+    fun fitRect(viewport: Viewport, bitmap: BitmapSize): FitRect {
+        if (viewport.width <= 0 || viewport.height <= 0 || bitmap.width <= 0 || bitmap.height <= 0) {
+            return FitRect(left = 0f, top = 0f, width = 0f, height = 0f)
+        }
+        val scale = minOf(
+            viewport.width.toFloat() / bitmap.width.toFloat(),
+            viewport.height.toFloat() / bitmap.height.toFloat(),
+        )
+        val width = bitmap.width * scale
+        val height = bitmap.height * scale
+        // 居中：黑边两两平分（`ContentScale.Fit` 的行为）。
+        return FitRect(
+            left = (viewport.width - width) / 2f,
+            top = (viewport.height - height) / 2f,
+            width = width,
+            height = height,
+        )
+    }
+
+    /**
+     * 视图坐标 → 位图像素，按 [fitRect] 的实际绘制矩形换算。
+     *
+     * 手指落在黑边里时夹到图的边缘（和 [viewOffsetToPixel] 夹到位图内是同一个意思：
+     * 越界 `getPixel` 会抛，而且"拖出图片"本来就是取边缘那颗）。
+     */
+    fun fitOffsetToPixel(
+        viewX: Float,
+        viewY: Float,
+        viewport: Viewport,
+        bitmap: BitmapSize,
+    ): SamplePoint {
+        val rect = fitRect(viewport, bitmap)
+        if (rect.width <= 0f || rect.height <= 0f) {
+            return SamplePoint(x = 0, y = 0, viewX = viewX, viewY = viewY)
+        }
+        val safeX = ((viewX - rect.left) / rect.width * bitmap.width)
+            .roundToInt()
+            .coerceIn(0, bitmap.width - 1)
+        val safeY = ((viewY - rect.top) / rect.height * bitmap.height)
+            .roundToInt()
+            .coerceIn(0, bitmap.height - 1)
         return SamplePoint(x = safeX, y = safeY, viewX = viewX, viewY = viewY)
     }
 
@@ -317,6 +376,43 @@ object QuickMenuColorHistoryStore {
 private val Context.quickMenuColorPickerDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "slide_index_quick_menu_color_picker",
 )
+
+/**
+ * 「取色速度」的持久化：准星位移 / 手指位移的倍率。
+ *
+ * 1.0 是"拖多远走多远"，手指的抖动会原样传给准星；0.5 让精度翻倍（手指走 2px、准星走 1px），
+ * 0.1 是给"一颗像素一颗像素挪"的极端档位（手指走 10px、准星走 1px）。档位固定成这五个，
+ * 读盘时只接受这几个值——这个数只影响手感，数据脏了就该回默认，而不是把倍率变成 0.31 这种。
+ *
+ * 和取色历史共用一个功能级 DataStore，不额外开文件。
+ */
+object QuickMenuColorGainStore {
+
+    private val KEY = floatPreferencesKey("quick_menu_color_gain")
+
+    /** 默认倍率：0.5 = 手指走 2px、准星走 1px。 */
+    const val DEFAULT = 0.5f
+
+    /** 可选的档位，按从小到大排（UI 点一下切下一档）。 */
+    val STEPS = floatArrayOf(0.1f, 0.3f, 0.5f, 0.7f, 1f)
+
+    private fun sanitize(value: Float): Float =
+        STEPS.firstOrNull { abs(it - value) < 0.001f } ?: DEFAULT
+
+    suspend fun read(context: Context): Float {
+        val raw = runCatching { context.quickMenuColorPickerDataStore.data.first()[KEY] }.getOrNull()
+            ?: return DEFAULT
+        return sanitize(raw)
+    }
+
+    suspend fun write(context: Context, gain: Float) {
+        runCatching {
+            context.quickMenuColorPickerDataStore.edit { prefs ->
+                prefs[KEY] = sanitize(gain)
+            }
+        }
+    }
+}
 
 /**
  * 取色要额外提供的值格式。

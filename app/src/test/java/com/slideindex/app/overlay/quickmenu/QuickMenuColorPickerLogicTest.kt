@@ -91,6 +91,65 @@ class QuickMenuColorPickerLogicTest {
         assertEquals(155, QuickMenuColorPickerGeometry.viewOffsetToPixel(15.5f, 0f, small, big).x)
     }
 
+    // ------------------------------------------------------------ 全屏 Fit 映射
+
+    @Test
+    fun fitRect_coversViewportWhenAspectMatches() {
+        val rect = QuickMenuColorPickerGeometry.fitRect(viewport, bitmap)
+        assertEquals(0f, rect.left, 1e-6f)
+        assertEquals(0f, rect.top, 1e-6f)
+        assertEquals(540f, rect.width, 1e-6f)
+        assertEquals(1200f, rect.height, 1e-6f)
+    }
+
+    @Test
+    fun fitRect_letterboxesTallAndWideViewports() {
+        // 屏幕比截图更高（窗口含刘海/导航栏那一截）：上下各一条黑边，图按宽度铺满。
+        val tall = QuickMenuColorPickerGeometry.fitRect(
+            viewport = QuickMenuColorPickerGeometry.Viewport(width = 1080, height = 2600),
+            bitmap = bitmap,
+        )
+        assertEquals(0f, tall.left, 1e-6f)
+        assertEquals(1080f, tall.width, 1e-6f)
+        assertEquals(2400f, tall.height, 1e-6f)
+        assertEquals(100f, tall.top, 1e-6f)
+
+        // 屏幕比截图更宽：左右各一条黑边。
+        val wide = QuickMenuColorPickerGeometry.fitRect(
+            viewport = QuickMenuColorPickerGeometry.Viewport(width = 1200, height = 2400),
+            bitmap = bitmap,
+        )
+        assertEquals(60f, wide.left, 1e-6f)
+        assertEquals(1080f, wide.width, 1e-6f)
+        assertEquals(2400f, wide.height, 1e-6f)
+        assertEquals(0f, wide.top, 1e-6f)
+    }
+
+    @Test
+    fun fitOffsetToPixel_mapsThroughLetterbox() {
+        val wide = QuickMenuColorPickerGeometry.Viewport(width = 1200, height = 2400)
+        // 屏幕中心 = 图的中心 = 位图中心（540, 1200）。
+        val center = QuickMenuColorPickerGeometry.fitOffsetToPixel(600f, 1200f, wide, bitmap)
+        assertEquals(540, center.x)
+        assertEquals(1200, center.y)
+        // 落在左侧黑边里的点夹到图的左边缘，不能算出负数（负坐标 getPixel 会抛）。
+        val inLeftBar = QuickMenuColorPickerGeometry.fitOffsetToPixel(10f, 1200f, wide, bitmap)
+        assertEquals(0, inLeftBar.x)
+        assertEquals(1200, inLeftBar.y)
+    }
+
+    @Test
+    fun fitOffsetToPixel_degenerateSizesDoNotCrash() {
+        val empty = QuickMenuColorPickerGeometry.fitOffsetToPixel(
+            viewX = 10f,
+            viewY = 10f,
+            viewport = QuickMenuColorPickerGeometry.Viewport(0, 0),
+            bitmap = bitmap,
+        )
+        assertEquals(0, empty.x)
+        assertEquals(0, empty.y)
+    }
+
     // ------------------------------------------------------------ 放大镜源矩形
 
     @Test
