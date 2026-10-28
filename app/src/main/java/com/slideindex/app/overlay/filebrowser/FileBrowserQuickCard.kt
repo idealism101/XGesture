@@ -68,9 +68,13 @@ internal fun FileBrowserQuickCard(
     val prefs = FileBrowserPreferences.current
     val internalRoot = remember(context) { FileBrowserStorage.internalStoragePath() }
     var usage by remember { mutableStateOf<FileBrowserStorageUsage?>(null) }
+    var volumes by remember { mutableStateOf(emptyList<FileBrowserVolume>()) }
     LaunchedEffect(internalRoot) {
         usage = withContext(Dispatchers.IO) {
             FileBrowserStorage.read(internalRoot)
+        }
+        volumes = withContext(Dispatchers.IO) {
+            FileBrowserStorage.volumes(context)
         }
     }
     val pins = remember(prefs.pinnedPaths, internalRoot) {
@@ -175,6 +179,22 @@ internal fun FileBrowserQuickCard(
                     icon = category.icon,
                     onClick = { onOpen(category.path) },
                 )
+            }
+        }
+
+        if (volumes.size > 1) {
+            Spacer(modifier = Modifier.height(6.dp))
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 1.dp),
+            ) {
+                items(volumes, key = { it.path }) { volume ->
+                    FileBrowserPinChip(
+                        label = volume.label,
+                        icon = if (volume.removable) Icons.Outlined.Storage else Icons.Outlined.PhoneAndroid,
+                        onClick = { onOpen(volume.path) },
+                    )
+                }
             }
         }
     }

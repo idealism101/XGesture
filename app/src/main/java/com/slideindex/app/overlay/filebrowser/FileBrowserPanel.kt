@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.AlertDialog
@@ -840,6 +841,13 @@ private fun FileBrowserQuickChips(
                         labelRes = R.string.file_browser_quick_app_data,
                         path = "/data/data",
                         icon = Icons.Outlined.Apps,
+                    ),
+                )
+                add(
+                    QuickTarget(
+                        labelRes = R.string.file_browser_quick_obb,
+                        path = "$internalRoot/Android/obb",
+                        icon = Icons.Outlined.Folder,
                     ),
                 )
             }

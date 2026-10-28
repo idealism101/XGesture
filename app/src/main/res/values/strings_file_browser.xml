@@ -103,4 +103,5 @@
     <string name="file_browser_search_results">Search results</string>
     <string name="file_browser_search_empty">No matches</string>
     <string name="file_browser_search_hint_recursive">Name contains…</string>
+    <string name="file_browser_quick_obb">Android/obb</string>
 </resources>
