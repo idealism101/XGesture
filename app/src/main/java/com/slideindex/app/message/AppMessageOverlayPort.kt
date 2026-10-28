@@ -44,6 +44,7 @@ import com.slideindex.app.overlay.MessageOverlayHost
 import com.slideindex.app.overlay.OverlayComposeDialogHost
 import com.slideindex.app.overlay.SideBubbleOverlayWindow
 import com.slideindex.app.settings.SettingsRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -53,6 +54,7 @@ import kotlinx.coroutines.launch
 
 @Singleton
 class AppMessageOverlayPort @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val settingsRepository: SettingsRepository,
     private val cNoticeHistoryLoader: CNoticeHistoryLoader,
 ) : MessageOverlayPort {
@@ -64,6 +66,15 @@ class AppMessageOverlayPort @Inject constructor(
             settingsWriteScope.launch {
                 settingsRepository.setMessageCNoticeHorizontalEdge(edge.id)
                 settingsRepository.setMessageCNoticeYFraction(yFraction)
+            }
+        }
+        // 设置页改了贴边卡参数（行数/不透明度/边距）后，让已在屏上的卡片立刻跟着变，
+        // 不必等下一条通知。
+        settingsWriteScope.launch {
+            settingsRepository.messageReminderSettings.collect { settings ->
+                mainHandler.post {
+                    EdgeCardOverlayWindow.updateWindowPlacement(appContext, settings)
+                }
             }
         }
     }

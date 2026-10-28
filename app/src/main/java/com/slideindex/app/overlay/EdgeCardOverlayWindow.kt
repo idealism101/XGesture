@@ -1051,14 +1051,16 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
         alignedRight = right
         applyCardBackground(right, if (height > 0) height else dp(42))
 
-        // 行数上限：单行保跑马灯，多行改为换行 + 末尾省略；实际高度由内容行数决定。
+        // 行数上限：完全照悬浮菜单侧边样式——
+        // 单行：singleLine + 省略号；多行：不限行、不省略，靠 onMeasure 里钉死的高度裁切。
         maxLines = EdgeCardOverlayWindow.lineCount(settings)
-        contentView.maxLines = maxLines
         contentView.isSingleLine = maxLines == 1
-        contentView.ellipsize = if (maxLines == 1) {
-            TextUtils.TruncateAt.MARQUEE
+        if (maxLines == 1) {
+            contentView.maxLines = 1
+            contentView.ellipsize = TextUtils.TruncateAt.MARQUEE
         } else {
-            TextUtils.TruncateAt.END
+            contentView.maxLines = Int.MAX_VALUE
+            contentView.ellipsize = null
         }
 
         val avatarParams = avatarContainer.layoutParams as FrameLayout.LayoutParams
@@ -1090,7 +1092,7 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
             measureTextWidth(titleView, maxText),
             measureTextWidth(contentView, maxText),
         ).coerceIn(minText, maxText)
-        val totalW = dp(2) + dp(38) + dp(4) + textW + dp(8)
+        val totalW = dp(48) + textW + dp(8)
         // 始终用内容算出的宽度：窗口传 EXACTLY（上一帧宽度）时也不能锁死，
         // 否则文字变短后卡片缩不回去，右侧会留一片空白。
         val w = if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.AT_MOST) {
@@ -1098,18 +1100,28 @@ private class EdgeCardView(context: Context) : ViewGroup(context) {
         } else {
             totalW
         }
-        // 用最终文字宽度重测：否则按 maxText 宽度算出来的行数偏少，
-        // 卡片高度不够，第二行下面会再露出第三行的一小截。
+        // 照悬浮菜单的做法：先把正文按最终宽度排一遍拿到行数（maxLines 已生效），
+        // 再把正文高度钉死成 lineHeight × 行数（行高不低于 16dp）。
+        // 高度钉死之后，多出来的行会被裁在固定高度里，不会露第三行，也不会裁到字。
         val exactText = MeasureSpec.makeMeasureSpec(textW, MeasureSpec.EXACTLY)
         val unbounded = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
         titleView.measure(exactText, unbounded)
         contentView.measure(exactText, unbounded)
-        val textHeight = titleView.measuredHeight + dp(2) + contentView.measuredHeight
-        val contentHeight = maxOf(textHeight + dp(8), dp(42))
+        val lines = (contentView.layout?.lineCount ?: 1).coerceIn(1, maxLines)
+        val lineHeight = maxOf(contentView.lineHeight, dp(16))
+        val contentHeight = lines * lineHeight
+        (contentView.layoutParams as? LinearLayout.LayoutParams)?.let {
+            if (it.height != contentHeight) {
+                it.height = contentHeight
+                contentView.layoutParams = it
+            }
+        }
+        val textHeight = titleView.measuredHeight + dp(2) + contentHeight
+        val cardHeight = maxOf(textHeight + dp(8), dp(42))
         val h = if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.AT_MOST) {
-            minOf(contentHeight, MeasureSpec.getSize(heightMeasureSpec).takeIf { it > 0 } ?: contentHeight)
+            minOf(cardHeight, MeasureSpec.getSize(heightMeasureSpec).takeIf { it > 0 } ?: cardHeight)
         } else {
-            contentHeight
+            cardHeight
         }
         setMeasuredDimension(w, h)
         cardLayer.measure(
