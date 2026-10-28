@@ -22,12 +22,16 @@ internal object RootNamespace {
     @Volatile
     private var cachedUsable: Boolean? = null
 
+    @Volatile
+    private var cachedMountMaster: Boolean? = null
+
     fun nsenterBinaryExists(): Boolean = runCatching { File(NSENTER_PATH).exists() }
         .getOrDefault(false)
 
     /** 权限模式切换/重新授权后清掉探测缓存。 */
     fun invalidate() {
         cachedUsable = null
+        cachedMountMaster = null
     }
 
     /** 真正执行一次 `nsenter ... id -u` 验证；结果缓存，避免每次 root 操作都探测。 */
@@ -47,6 +51,26 @@ internal object RootNamespace {
         val usable = result?.exitCode == 0 && output.lineSequence().any { it.trim() == "0" }
         cachedUsable = usable
         Log.i(TAG, "global namespace usable=$usable")
+        return usable
+    }
+
+    /** 没有 toybox nsenter 时的第二方案：Magisk/KernelSU 的 `su --mount-master`。 */
+    fun mountMasterUsable(): Boolean {
+        cachedMountMaster?.let { return it }
+        val su = TaskManagerShellExecutor.resolveSuInvocation()
+        val command = "$su --mount-master -c 'id -u'"
+        val result = runCatching {
+            TaskManagerShellExecutor.shellCommandWithOutput(
+                4_000L,
+                "/system/bin/sh",
+                "-c",
+                command,
+            )
+        }.getOrNull()
+        val output = result?.output.orEmpty()
+        val usable = result?.exitCode == 0 && output.lineSequence().any { it.trim() == "0" }
+        cachedMountMaster = usable
+        Log.i(TAG, "mount-master usable=$usable")
         return usable
     }
 

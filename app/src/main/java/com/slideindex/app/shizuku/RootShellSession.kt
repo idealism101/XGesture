@@ -61,17 +61,26 @@ internal object RootShellSession {
         val sh = TaskManagerShellExecutor.resolveShPath()
         val globalLauncher = RootNamespace.shellLauncher(sh)
         if (tryOpenSession(globalLauncher)) return true
-        // 某些 ROM 没有可用的 nsenter：不能因此让整个 Root 模式不可用，退回普通 shell。
+        // 没有 nsenter 的 ROM：尝试 su --mount-master（Magisk 系）。
+        if (RootNamespace.mountMasterUsable() &&
+            tryOpenSession(sh, suArgs = listOf("--mount-master"))
+        ) {
+            return true
+        }
+        // 最后退回普通 shell，保证 Root 模式本身仍可用。
         if (globalLauncher != sh) {
             return tryOpenSession(sh)
         }
         return false
     }
 
-    private fun tryOpenSession(shellCommand: String): Boolean {
+    private fun tryOpenSession(
+        shellCommand: String,
+        suArgs: List<String> = emptyList(),
+    ): Boolean {
         return runCatching {
             val su = TaskManagerShellExecutor.resolveSuInvocation()
-            val proc = ProcessBuilder(su)
+            val proc = ProcessBuilder(listOf(su) + suArgs)
                 .redirectErrorStream(true)
                 .directory(java.io.File("/"))
                 .apply {
