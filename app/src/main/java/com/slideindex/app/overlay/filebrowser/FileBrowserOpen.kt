@@ -22,6 +22,11 @@ internal object FileBrowserOpen {
     fun open(context: Context, path: String, chooserTitle: String): Boolean {
         val file = File(path)
         if (!file.isFile || !file.canRead()) return false
+        return openFile(context, file, chooserTitle)
+    }
+
+    fun openFile(context: Context, file: File, chooserTitle: String): Boolean {
+        if (!file.isFile || !file.canRead()) return false
         val uri: Uri = runCatching {
             FileProvider.getUriForFile(
                 context,

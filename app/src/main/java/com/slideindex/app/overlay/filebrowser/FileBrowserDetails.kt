@@ -47,6 +47,8 @@ internal fun FileBrowserDetailsOverlay(
     copied: Boolean,
     onCopy: () -> Unit,
     onOpenWith: (() -> Unit)?,
+    openWithLabel: String?,
+    openWithEnabled: Boolean,
     onClose: () -> Unit,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -156,9 +158,13 @@ internal fun FileBrowserDetailsOverlay(
                     if (onOpenWith != null) {
                         OutlinedButton(
                             onClick = onOpenWith,
+                            enabled = openWithEnabled,
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text(stringResource(R.string.file_browser_open_with))
+                            Text(
+                                text = openWithLabel
+                                    ?: stringResource(R.string.file_browser_open_with),
+                            )
                         }
                     }
                 }

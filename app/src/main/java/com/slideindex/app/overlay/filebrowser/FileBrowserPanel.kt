@@ -61,6 +61,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,6 +81,7 @@ import com.slideindex.app.overlay.LocalFrostedGlassBackdrop
 import com.slideindex.app.ui.miuix.MiuixSearchField
 import com.slideindex.app.ui.theme.LocalAppDarkTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BreadcrumbBar
 import top.yukonga.miuix.kmp.basic.BreadcrumbBarDefaults
 import top.yukonga.miuix.kmp.basic.BreadcrumbItem
@@ -119,6 +121,14 @@ internal fun FileBrowserPanel(
     val focusManager = LocalFocusManager.current
     var copied by remember { mutableStateOf(false) }
     var showPathDialog by remember { mutableStateOf(false) }
+    var exportBusy by remember { mutableStateOf(false) }
+    var exportFailed by remember { mutableStateOf(false) }
+    val actionScope = rememberCoroutineScope()
+
+    LaunchedEffect(state.details?.path) {
+        exportBusy = false
+        exportFailed = false
+    }
 
     LaunchedEffect(state.path) {
         runCatching { listState.scrollToItem(0) }
@@ -280,6 +290,16 @@ internal fun FileBrowserPanel(
                     val details = state.details
                     if (details != null) {
                         val openWithTitle = stringResource(R.string.file_browser_open_with)
+                        val canDirectOpen = FileBrowserOpen.canOpen(details.path)
+                        val canExport = !canDirectOpen &&
+                            state.access?.mode == AccessMode.ROOT
+                        val openWithLabel = when {
+                            exportBusy -> stringResource(R.string.file_browser_exporting)
+                            exportFailed -> stringResource(R.string.file_browser_export_failed)
+                            canDirectOpen -> stringResource(R.string.file_browser_open_with)
+                            canExport -> stringResource(R.string.file_browser_export_open)
+                            else -> null
+                        }
                         FileBrowserDetailsOverlay(
                             entry = details,
                             copied = copied,
@@ -287,17 +307,44 @@ internal fun FileBrowserPanel(
                                 copyToClipboard(context, details.path)
                                 copied = true
                             },
-                            onOpenWith = if (FileBrowserOpen.canOpen(details.path)) {
-                                {
-                                    FileBrowserOpen.open(
-                                        context = context,
-                                        path = details.path,
-                                        chooserTitle = openWithTitle,
-                                    )
+                            onOpenWith = when {
+                                canDirectOpen -> {
+                                    {
+                                        FileBrowserOpen.open(
+                                            context = context,
+                                            path = details.path,
+                                            chooserTitle = openWithTitle,
+                                        )
+                                    }
                                 }
-                            } else {
-                                null
+                                canExport -> {
+                                    {
+                                        if (!exportBusy) {
+                                            actionScope.launch {
+                                                exportBusy = true
+                                                exportFailed = false
+                                                val exported = FileBrowserExport.exportToCache(
+                                                    context = context,
+                                                    sourcePath = details.path,
+                                                )
+                                                exportBusy = false
+                                                if (exported != null) {
+                                                    FileBrowserOpen.openFile(
+                                                        context = context,
+                                                        file = exported,
+                                                        chooserTitle = openWithTitle,
+                                                    )
+                                                } else {
+                                                    exportFailed = true
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                else -> null
                             },
+                            openWithLabel = openWithLabel,
+                            openWithEnabled = !exportBusy,
                             onClose = controller::hideDetails,
                         )
                     }

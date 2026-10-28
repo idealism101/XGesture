@@ -89,4 +89,7 @@
     <string name="file_browser_go">跳转</string>
     <string name="file_browser_cancel">取消</string>
     <string name="file_browser_open_with">用其他应用打开</string>
+    <string name="file_browser_export_open">导出并打开</string>
+    <string name="file_browser_exporting">正在导出…</string>
+    <string name="file_browser_export_failed">导出失败</string>
 </resources>

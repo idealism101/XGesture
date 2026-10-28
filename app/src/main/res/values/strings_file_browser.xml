@@ -89,4 +89,7 @@
     <string name="file_browser_go">Go</string>
     <string name="file_browser_cancel">Cancel</string>
     <string name="file_browser_open_with">Open with…</string>
+    <string name="file_browser_export_open">Export and open</string>
+    <string name="file_browser_exporting">Exporting…</string>
+    <string name="file_browser_export_failed">Export failed</string>
 </resources>
