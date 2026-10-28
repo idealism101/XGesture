@@ -59,6 +59,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -125,6 +126,7 @@ private fun FileBrowserEntryRow(
 ) {
     val fileKind = FileKind.from(entry.name, entry.kind)
     val isFolder = entry.kind == FileEntryKind.DIRECTORY
+    val context = LocalContext.current
     val tint = if (isFolder) {
         MaterialTheme.colorScheme.primary
     } else {
@@ -134,10 +136,16 @@ private fun FileBrowserEntryRow(
         mutableStateOf<Bitmap?>(null)
     }
     LaunchedEffect(entry.path, entry.modifiedEpochSeconds, fileKind) {
-        if (fileKind == FileKind.IMAGE) {
+        if (fileKind == FileKind.IMAGE ||
+            fileKind == FileKind.VIDEO ||
+            fileKind == FileKind.APK ||
+            fileKind == FileKind.PDF
+        ) {
             thumbnail = FileBrowserThumbnailLoader.load(
+                context = context,
                 path = entry.path,
                 modifiedEpochSeconds = entry.modifiedEpochSeconds,
+                kind = fileKind,
             )
         }
     }
