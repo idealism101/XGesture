@@ -266,6 +266,10 @@ internal fun FileBrowserPanel(
                                         -> controller.showDetails(entry)
                                     }
                                 },
+                                onEntryLongClick = { entry ->
+                                    focusManager.clearFocus()
+                                    controller.showDetails(entry)
+                                },
                                 onRetry = controller::refresh,
                                 onRequestAllFiles = onRequestAllFiles,
                                 onRequestShizuku = onRequestShizuku,
@@ -382,6 +386,12 @@ internal fun FileBrowserPanel(
                             title = when (target) {
                                 is FileBrowserNameTarget.Create ->
                                     stringResource(R.string.file_browser_new_folder)
+                                is FileBrowserNameTarget.Rename ->
+                                    stringResource(R.string.file_browser_rename)
+                            },
+                            confirmLabel = when (target) {
+                                is FileBrowserNameTarget.Create ->
+                                    stringResource(R.string.file_browser_create)
                                 is FileBrowserNameTarget.Rename ->
                                     stringResource(R.string.file_browser_rename)
                             },
@@ -967,6 +977,7 @@ private fun copyToClipboard(context: Context, text: String) {
 private fun FileBrowserNameDialog(
     initialName: String,
     title: String,
+    confirmLabel: String,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
@@ -990,7 +1001,7 @@ private fun FileBrowserNameDialog(
                     if (name.isNotEmpty()) onConfirm(name)
                 },
             ) {
-                Text(stringResource(R.string.file_browser_create))
+                Text(confirmLabel)
             }
         },
         dismissButton = {

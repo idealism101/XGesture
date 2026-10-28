@@ -2,8 +2,10 @@ package com.slideindex.app.overlay.filebrowser
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,6 +73,7 @@ internal fun FileBrowserListContent(
     internalRoot: String,
     listState: LazyListState,
     onEntryClick: (FileBrowserEntry) -> Unit,
+    onEntryLongClick: (FileBrowserEntry) -> Unit,
     onRetry: () -> Unit,
     onRequestAllFiles: () -> Unit,
     onRequestShizuku: () -> Unit,
@@ -105,17 +108,20 @@ internal fun FileBrowserListContent(
                     entry = entry,
                     showDivider = index < filtered.lastIndex,
                     onClick = { onEntryClick(entry) },
+                    onLongClick = { onEntryLongClick(entry) },
                 )
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FileBrowserEntryRow(
     entry: FileBrowserEntry,
     showDivider: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
 ) {
     val fileKind = FileKind.from(entry.name, entry.kind)
     val isFolder = entry.kind == FileEntryKind.DIRECTORY
@@ -139,7 +145,10 @@ private fun FileBrowserEntryRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                )
                 .heightIn(min = 60.dp)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
