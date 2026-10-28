@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 文件浏览器（独立资源文件，避免改动现有 strings.xml）。 -->
+<resources>
+    <string name="file_browser_title">ファイルブラウザ</string>
+    <string name="file_browser_entry_desc">システムのルート、内部ストレージ、Android/data を閲覧します。</string>
+
+    <string name="file_browser_search_hint">このフォルダーを検索</string>
+    <string name="file_browser_crumb_root">ルート</string>
+    <string name="file_browser_crumb_internal">内部ストレージ</string>
+
+    <string name="file_browser_quick_root">システムルート</string>
+    <string name="file_browser_quick_internal">内部ストレージ</string>
+    <string name="file_browser_quick_android_data">Android/data</string>
+    <string name="file_browser_quick_download">ダウンロード</string>
+    <string name="file_browser_quick_app_data">アプリデータ</string>
+
+    <string name="file_browser_access_detecting">確認中…</string>
+    <string name="file_browser_access_root">Root</string>
+    <string name="file_browser_access_shizuku">Shizuku</string>
+    <string name="file_browser_access_all_files">すべてのファイル</string>
+    <string name="file_browser_access_limited">制限あり</string>
+
+    <string name="file_browser_refresh">更新</string>
+    <string name="file_browser_menu">その他のオプション</string>
+    <string name="file_browser_close">閉じる</string>
+
+    <string name="file_browser_sort_name">名前</string>
+    <string name="file_browser_sort_time">更新日時</string>
+    <string name="file_browser_sort_size">サイズ</string>
+    <string name="file_browser_sort_asc">昇順</string>
+    <string name="file_browser_sort_desc">降順</string>
+    <string name="file_browser_show_hidden">隠しファイルを表示</string>
+    <string name="file_browser_copy_current_path">現在のパスをコピー</string>
+
+    <string name="file_browser_empty_dir">このフォルダーは空です。</string>
+    <string name="file_browser_empty_search">一致するファイルはありません。</string>
+    <string name="file_browser_loading">読み込み中…</string>
+    <string name="file_browser_truncated">最初の %1$d 件のみ表示しています。</string>
+    <string name="file_browser_item_count">%1$d 件</string>
+
+    <string name="file_browser_banner_limited">制限付きアクセス：このアプリから見えるファイルだけが表示されます。</string>
+    <string name="file_browser_grant_all_files">すべてのファイルへのアクセスを許可</string>
+    <string name="file_browser_grant_shizuku">Shizuku を許可</string>
+    <string name="file_browser_retry">再試行</string>
+
+    <string name="file_browser_error_permission">このフォルダーにアクセスできません</string>
+    <string name="file_browser_error_permission_hint">フォルダーは存在しますが、このアプリに読み取り権限がありません。</string>
+    <string name="file_browser_error_needs_root">Root が必要です</string>
+    <string name="file_browser_error_needs_root_hint">Shizuku は shell ユーザーとして動作するため /data を読めません。Root モードに切り替えて再試行してください。</string>
+    <string name="file_browser_error_privilege">特権アクセスが必要です</string>
+    <string name="file_browser_error_privilege_shizuku_hint">Shizuku を起動して権限を付与し、再試行してください。</string>
+    <string name="file_browser_error_privilege_root_hint">Root が許可されていません。アプリ設定で Root を許可してから再試行してください。</string>
+    <string name="file_browser_error_not_found">フォルダーが見つかりません</string>
+    <string name="file_browser_error_not_dir">フォルダーではありません</string>
+    <string name="file_browser_error_timeout">読み取りがタイムアウトしました</string>
+    <string name="file_browser_error_unknown">このフォルダーを読み取れませんでした</string>
+
+    <string name="file_browser_kind_folder">フォルダー</string>
+    <string name="file_browser_kind_link">リンク</string>
+    <string name="file_browser_kind_file">ファイル</string>
+
+    <string name="file_browser_details_title">詳細</string>
+    <string name="file_browser_detail_name">名前</string>
+    <string name="file_browser_detail_path">パス</string>
+    <string name="file_browser_detail_size">サイズ</string>
+    <string name="file_browser_detail_modified">更新日時</string>
+    <string name="file_browser_detail_permissions">権限</string>
+    <string name="file_browser_detail_type">種類</string>
+    <string name="file_browser_copy_path">パスをコピー</string>
+    <string name="file_browser_copied">コピーしました</string>
+</resources>

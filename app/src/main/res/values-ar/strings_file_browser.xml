@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 文件浏览器（独立资源文件，避免改动现有 strings.xml）。 -->
+<resources>
+    <string name="file_browser_title">مستعرض الملفات</string>
+    <string name="file_browser_entry_desc">تصفّح جذر النظام والتخزين الداخلي وAndroid/data.</string>
+
+    <string name="file_browser_search_hint">البحث في هذا المجلد</string>
+    <string name="file_browser_crumb_root">الجذر</string>
+    <string name="file_browser_crumb_internal">التخزين الداخلي</string>
+
+    <string name="file_browser_quick_root">جذر النظام</string>
+    <string name="file_browser_quick_internal">التخزين الداخلي</string>
+    <string name="file_browser_quick_android_data">Android/data</string>
+    <string name="file_browser_quick_download">التنزيلات</string>
+    <string name="file_browser_quick_app_data">بيانات التطبيق</string>
+
+    <string name="file_browser_access_detecting">جارٍ التحقق…</string>
+    <string name="file_browser_access_root">Root</string>
+    <string name="file_browser_access_shizuku">Shizuku</string>
+    <string name="file_browser_access_all_files">كل الملفات</string>
+    <string name="file_browser_access_limited">محدود</string>
+
+    <string name="file_browser_refresh">تحديث</string>
+    <string name="file_browser_menu">خيارات أخرى</string>
+    <string name="file_browser_close">إغلاق</string>
+
+    <string name="file_browser_sort_name">الاسم</string>
+    <string name="file_browser_sort_time">وقت التعديل</string>
+    <string name="file_browser_sort_size">الحجم</string>
+    <string name="file_browser_sort_asc">تصاعدي</string>
+    <string name="file_browser_sort_desc">تنازلي</string>
+    <string name="file_browser_show_hidden">إظهار الملفات المخفية</string>
+    <string name="file_browser_copy_current_path">نسخ المسار الحالي</string>
+
+    <string name="file_browser_empty_dir">هذا المجلد فارغ.</string>
+    <string name="file_browser_empty_search">لا توجد ملفات مطابقة.</string>
+    <string name="file_browser_loading">جارٍ القراءة…</string>
+    <string name="file_browser_truncated">تُعرض أول %1$d عنصر فقط.</string>
+    <string name="file_browser_item_count">%1$d عنصر</string>
+
+    <string name="file_browser_banner_limited">وصول محدود: تُعرض الملفات المرئية لهذا التطبيق فقط.</string>
+    <string name="file_browser_grant_all_files">منح الوصول إلى كل الملفات</string>
+    <string name="file_browser_grant_shizuku">منح Shizuku</string>
+    <string name="file_browser_retry">إعادة المحاولة</string>
+
+    <string name="file_browser_error_permission">يتعذّر الوصول إلى هذا المجلد</string>
+    <string name="file_browser_error_permission_hint">المجلد موجود، لكن هذا التطبيق لا يملك إذن القراءة.</string>
+    <string name="file_browser_error_needs_root">يتطلب Root</string>
+    <string name="file_browser_error_needs_root_hint">يعمل Shizuku بمستخدم shell ولا يمكنه قراءة /data. بدّل إلى وضع Root وأعد المحاولة.</string>
+    <string name="file_browser_error_privilege">صلاحية وصول مميزة مطلوبة</string>
+    <string name="file_browser_error_privilege_shizuku_hint">شغّل Shizuku وامنح الإذن، ثم أعد المحاولة.</string>
+    <string name="file_browser_error_privilege_root_hint">لم يُمنح Root. اسمح بـ Root في إعدادات التطبيق ثم أعد المحاولة.</string>
+    <string name="file_browser_error_not_found">المجلد غير موجود</string>
+    <string name="file_browser_error_not_dir">ليس مجلدًا</string>
+    <string name="file_browser_error_timeout">انتهت مهلة القراءة</string>
+    <string name="file_browser_error_unknown">فشلت قراءة هذا المجلد</string>
+
+    <string name="file_browser_kind_folder">مجلد</string>
+    <string name="file_browser_kind_link">رابط</string>
+    <string name="file_browser_kind_file">ملف</string>
+
+    <string name="file_browser_details_title">التفاصيل</string>
+    <string name="file_browser_detail_name">الاسم</string>
+    <string name="file_browser_detail_path">المسار</string>
+    <string name="file_browser_detail_size">الحجم</string>
+    <string name="file_browser_detail_modified">التعديل</string>
+    <string name="file_browser_detail_permissions">الأذونات</string>
+    <string name="file_browser_detail_type">النوع</string>
+    <string name="file_browser_copy_path">نسخ المسار</string>
+    <string name="file_browser_copied">تم النسخ</string>
+</resources>

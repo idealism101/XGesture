@@ -332,12 +332,12 @@ object QuickMenuOverlayWindow {
      */
     private fun handleBack() {
         val current = session ?: return
-        if (current.page.value != null) {
         // 全屏取色是"盖在工具页上的一层"：返回只退出这一层，回到取色结果页，不连菜单一起关。
         if (current.colorPicker.picking != null) {
             current.colorPicker.picking = null
             return
         }
+        if (current.page.value != null) {
             current.page.value = null
         } else {
             dismiss()
