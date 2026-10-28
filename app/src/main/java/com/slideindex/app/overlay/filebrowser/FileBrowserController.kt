@@ -26,6 +26,9 @@ data class FileBrowserUiState(
     val directorySizeBytes: Long? = null,
     val directorySizeLoading: Boolean = false,
     val directorySizeComputed: Boolean = false,
+    val searchResults: List<FileBrowserEntry>? = null,
+    val searchQuery: String? = null,
+    val searchLoading: Boolean = false,
 )
 
 /**
@@ -41,6 +44,7 @@ internal class FileBrowserController(
     private val dataSource = FileBrowserDataSource(context)
     private var loadJob: Job? = null
     private var sizeJob: Job? = null
+    private var searchJob: Job? = null
 
     val internalRoot: String get() = dataSource.internalRoot
 
@@ -101,6 +105,8 @@ internal class FileBrowserController(
     fun navigateTo(path: String) {
         val normalized = FileBrowserPaths.normalize(path, internalRoot)
         if (normalized == state.path && state.error == null) return
+        searchJob?.cancel()
+        searchJob = null
         state = state.copy(
             path = normalized,
             entries = emptyList(),
@@ -113,6 +119,9 @@ internal class FileBrowserController(
             directorySizeBytes = null,
             directorySizeLoading = false,
             directorySizeComputed = false,
+            searchResults = null,
+            searchQuery = null,
+            searchLoading = false,
         )
         FileBrowserPreferences.rememberLastPath(normalized)
         reload(resolveAccess = false)
@@ -158,6 +167,43 @@ internal class FileBrowserController(
         loadJob = null
         sizeJob?.cancel()
         sizeJob = null
+        searchJob?.cancel()
+        searchJob = null
+    }
+
+    fun searchRecursive(query: String) {
+        val needle = query.trim()
+        if (needle.isEmpty()) return
+        val base = state.path
+        val access = state.access ?: return
+        searchJob?.cancel()
+        state = state.copy(
+            searchResults = emptyList(),
+            searchQuery = needle,
+            searchLoading = true,
+        )
+        searchJob = scope.launch {
+            val results = withContext(Dispatchers.IO) {
+                FileBrowserSearch.search(base, needle, access)
+            }
+            if (!isActive) return@launch
+            state = state.copy(searchResults = results, searchLoading = false)
+        }
+    }
+
+    fun clearSearch() {
+        searchJob?.cancel()
+        searchJob = null
+        state = state.copy(searchResults = null, searchQuery = null, searchLoading = false)
+    }
+
+    fun openSearchResult(entry: FileBrowserEntry) {
+        clearSearch()
+        if (entry.kind == FileEntryKind.DIRECTORY || entry.kind == FileEntryKind.SYMLINK) {
+            navigateTo(entry.path)
+        } else {
+            showDetails(entry)
+        }
     }
 
     fun computeDirectorySize() {

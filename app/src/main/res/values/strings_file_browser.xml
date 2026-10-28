@@ -99,4 +99,8 @@
     <string name="file_browser_name_hint">Name</string>
     <string name="file_browser_create">Create</string>
     <string name="file_browser_operation_failed">Operation failed</string>
+    <string name="file_browser_recursive_search">Recursive search</string>
+    <string name="file_browser_search_results">Search results</string>
+    <string name="file_browser_search_empty">No matches</string>
+    <string name="file_browser_search_hint_recursive">Name contains…</string>
 </resources>

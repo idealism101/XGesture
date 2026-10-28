@@ -121,6 +121,7 @@ internal fun FileBrowserPanel(
     val focusManager = LocalFocusManager.current
     var copied by remember { mutableStateOf(false) }
     var showPathDialog by remember { mutableStateOf(false) }
+    var showSearchDialog by remember { mutableStateOf(false) }
     var exportBusy by remember { mutableStateOf(false) }
     var exportFailed by remember { mutableStateOf(false) }
     var nameTarget by remember { mutableStateOf<FileBrowserNameTarget?>(null) }
@@ -200,6 +201,7 @@ internal fun FileBrowserPanel(
                             onTogglePin = { FileBrowserPreferences.togglePin(state.path) },
                             onOpenPathDialog = { showPathDialog = true },
                             onNewFolder = { nameTarget = FileBrowserNameTarget.Create(state.path) },
+                            onRecursiveSearch = { showSearchDialog = true },
                             onCopyCurrentPath = {
                                 copyToClipboard(context, state.path)
                                 copied = true
@@ -376,6 +378,25 @@ internal fun FileBrowserPanel(
                             },
                         )
                     }
+                    if (showSearchDialog) {
+                        FileBrowserSearchDialog(
+                            onDismiss = { showSearchDialog = false },
+                            onSearch = { query ->
+                                showSearchDialog = false
+                                focusManager.clearFocus()
+                                controller.searchRecursive(query)
+                            },
+                        )
+                    }
+                    state.searchResults?.let { results ->
+                        FileBrowserSearchOverlay(
+                            query = state.searchQuery.orEmpty(),
+                            results = results,
+                            loading = state.searchLoading,
+                            onOpen = controller::openSearchResult,
+                            onClose = controller::clearSearch,
+                        )
+                    }
                     nameTarget?.let { target ->
                         val access = state.access
                         FileBrowserNameDialog(
@@ -502,6 +523,7 @@ private fun FileBrowserHeader(
     onTogglePin: () -> Unit,
     onOpenPathDialog: () -> Unit,
     onNewFolder: () -> Unit,
+    onRecursiveSearch: () -> Unit,
     onCopyCurrentPath: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -637,6 +659,13 @@ private fun FileBrowserHeader(
                     text = { Text(stringResource(R.string.file_browser_new_folder)) },
                     onClick = {
                         onNewFolder()
+                        menuExpanded = false
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.file_browser_recursive_search)) },
+                    onClick = {
+                        onRecursiveSearch()
                         menuExpanded = false
                     },
                 )
@@ -1002,6 +1031,42 @@ private fun FileBrowserNameDialog(
                 },
             ) {
                 Text(confirmLabel)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.file_browser_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun FileBrowserSearchDialog(
+    onDismiss: () -> Unit,
+    onSearch: (String) -> Unit,
+) {
+    var value by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.file_browser_recursive_search)) },
+        text = {
+            OutlinedTextField(
+                value = value,
+                onValueChange = { value = it },
+                singleLine = true,
+                label = { Text(stringResource(R.string.file_browser_search_hint_recursive)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val query = value.trim()
+                    if (query.isNotEmpty()) onSearch(query)
+                },
+            ) {
+                Text(stringResource(R.string.file_browser_go))
             }
         },
         dismissButton = {

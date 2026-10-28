@@ -99,4 +99,8 @@
     <string name="file_browser_name_hint">名称</string>
     <string name="file_browser_create">创建</string>
     <string name="file_browser_operation_failed">操作失败</string>
+    <string name="file_browser_recursive_search">递归搜索</string>
+    <string name="file_browser_search_results">搜索结果</string>
+    <string name="file_browser_search_empty">没有匹配项</string>
+    <string name="file_browser_search_hint_recursive">名称包含…</string>
 </resources>
