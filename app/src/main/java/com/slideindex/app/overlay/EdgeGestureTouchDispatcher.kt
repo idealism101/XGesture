@@ -10,7 +10,6 @@ internal class EdgeGestureTouchDispatcher(
     private val adjustPanelController: AdjustPanelOverlayController,
     private val quickLauncherController: QuickLauncherOverlayController,
     private val shellCoordinator: ShellPanelOverlayController,
-    private val taskSwitcherController: TaskSwitcherOverlayController,
     private val indexPanelRenderer: IndexPanelRenderer,
     private val gestureAnimationCoordinator: GestureAnimationCoordinator,
     private val rawToLocal: (Float, Float) -> Pair<Float, Float>,
@@ -95,8 +94,8 @@ internal class EdgeGestureTouchDispatcher(
                 return quickLauncherController.handleTouch(event, localX, localY)
             OverlayPanelMode.SHELL_COMMANDS ->
                 return shellCoordinator.handleTouch(event, localX, localY)
-            OverlayPanelMode.TASK_SWITCHER ->
-                return taskSwitcherController.handleTouch(event, localX, localY)
+            // 任务切换面板已迁移到 SystemUI 进程，App 侧不再处理其触摸。
+            OverlayPanelMode.TASK_SWITCHER -> Unit
             OverlayPanelMode.INDEX -> return indexPanelRenderer.handleTouch(event, localX, localY)
             OverlayPanelMode.NONE -> Unit
         }

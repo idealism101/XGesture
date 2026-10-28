@@ -6,7 +6,6 @@ import android.graphics.Canvas
 import android.graphics.RectF
 import android.view.View
 import com.slideindex.app.data.AppInfo
-import com.slideindex.app.data.AppRepository
 import com.slideindex.app.gesture.ActionExecutor
 import com.slideindex.app.gesture.GestureSession
 import com.slideindex.app.gesture.GestureZoneLayout
@@ -21,7 +20,6 @@ import com.slideindex.app.util.HapticHelper
 internal class EdgeGestureOverlayHosts(
     private val view: EdgeGestureOverlayView,
     private val side: PanelSide,
-    private val appRepository: AppRepository,
     private val zoneLayout: GestureZoneLayout,
     private val indexSession: SlideAlongRailSession,
     private val panelGridSession: PanelGridSession,
@@ -53,8 +51,7 @@ internal class EdgeGestureOverlayHosts(
 ) : ShellPanelOverlayController.Host,
     QuickLauncherOverlayController.Host,
     IndexPanelRenderer.Host,
-    AdjustPanelOverlayController.Host,
-    TaskSwitcherOverlayController.Host {
+    AdjustPanelOverlayController.Host {
 
     var indexPanelContentRectProvider: (() -> RectF)? = null
 
@@ -176,8 +173,6 @@ internal class EdgeGestureOverlayHosts(
     override fun indexSession(): SlideAlongRailSession = indexSession
 
     override fun iconFor(app: AppInfo): Bitmap = iconForFn(app)
-
-    override fun appRepository(): AppRepository = appRepository
 
     override fun hapticTick() = HapticHelper.appTick(view, settings())
 

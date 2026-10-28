@@ -4732,4 +4732,5 @@
     <string name="action_icon_style_filled">ممتلئ</string>
     <string name="action_icon_text_title">أيقونة نصية</string>
     <string name="action_icon_text_hint">حرف إلى حرفين</string>
+    <string name="task_center_systemui_scope_required">تعذر فتح مركز المهام. فعّل نطاق «واجهة النظام» الخاص بـ XGesture في LSPosed، ثم أعد تشغيل واجهة النظام.</string>
 </resources>

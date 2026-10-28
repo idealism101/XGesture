@@ -4728,4 +4728,5 @@
     <string name="action_icon_style_filled">塗りつぶし</string>
     <string name="action_icon_text_title">テキストアイコン</string>
     <string name="action_icon_text_hint">1〜2 文字</string>
+    <string name="task_center_systemui_scope_required">タスクセンターを開けません。LSPosed で XGesture の「システム UI」スコープを有効にしてから、システム UI を再起動してください。</string>
 </resources>

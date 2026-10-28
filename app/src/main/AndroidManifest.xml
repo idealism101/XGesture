@@ -694,6 +694,16 @@
             </intent-filter>
         </receiver>
 
+        <!-- SystemUI 侧任务中心钩子的就绪回执：用于判断 LSPosed 的"系统界面"作用域是否生效。 -->
+        <receiver
+            android:name=".receiver.TaskCenterReadyReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="com.slideindex.app.taskcenter.action.READY" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="rikka.shizuku.ShizukuProvider"
             android:authorities="${applicationId}.shizuku"

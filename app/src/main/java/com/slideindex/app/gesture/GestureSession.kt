@@ -669,7 +669,7 @@ class GestureSession(
             is GestureAction.TaskSwitcher -> {
                 sessionContinuousPick.taskSwitcher = false
                 active = true
-                openPanel(OverlayPanelMode.TASK_SWITCHER)
+                openTaskCenter(rawX, rawY)
             }
             is GestureAction.ShellCommandPanel -> {
                 sessionContinuousPick.shell = false

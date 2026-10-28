@@ -13,7 +13,6 @@ internal class EdgeGesturePanelRenderer(
     private val adjustPanelController: AdjustPanelOverlayController,
     private val indexPanelRenderer: IndexPanelRenderer,
     private val quickLauncherController: QuickLauncherOverlayController,
-    private val taskSwitcherController: TaskSwitcherOverlayController,
     private val shellCoordinator: ShellPanelOverlayController,
     private val panelEnterAnimator: OverlayPanelEnterAnimator,
     private val panelContentRect: android.graphics.RectF,
@@ -68,7 +67,8 @@ internal class EdgeGesturePanelRenderer(
                     quickLauncherController.draw(canvas)
                 }
             }
-            OverlayPanelMode.TASK_SWITCHER -> taskSwitcherController.draw(canvas)
+            // 任务切换面板已迁移到 SystemUI 进程（ty=2038 overlay），App 侧不再绘制。
+            OverlayPanelMode.TASK_SWITCHER -> Unit
             OverlayPanelMode.SHELL_COMMANDS ->
                 shellCoordinator.draw(canvas, panelEnterAnimator.progress, panelContentRect)
             OverlayPanelMode.NONE -> adjustPanelController.syncAdjustIndicatorAnimation()

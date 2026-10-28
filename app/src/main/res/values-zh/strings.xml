@@ -4755,4 +4755,5 @@ adb 模式应返回 uid=2000。
     <string name="quick_wheel_slot_save">保存</string>
     <string name="smart_screenshot_saved">截图已保存到相册</string>
     <string name="smart_screenshot_copied">截图已复制到剪贴板</string>
+    <string name="task_center_systemui_scope_required">任务中心打不开：请在 LSPosed 里给 XGesture 勾选「系统界面」作用域，然后重启系统界面。</string>
 </resources>
